@@ -2,70 +2,96 @@ import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
 
-# 1. Configuración
-MODEL_PATH = "best_float32.tflite" # Verifica que el nombre sea exacto
-IMAGE_PATH = "tu_foto_de_placa.jpg" 
-CONF_THRESHOLD = 0.25 
+# --- 1. CONFIGURACIÓN ---
+MODEL_PATH = "best_float32.tflite"  # Tu modelo float32
+IMAGE_PATH = "tu_foto_de_placa.jpg"   # Nombre de tu imagen de prueba
+CONF_THRESHOLD = 0.30                # Umbral de confianza
 
-# 2. Cargar el modelo
-interpreter = tflite.Interpreter(model_path=MODEL_PATH)
-interpreter.allocate_tensors()
+def main():
+    # --- 2. CARGAR EL MODELO ---
+    print(f"Cargando modelo: {MODEL_PATH}...")
+    interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+    interpreter.allocate_tensors()
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-_, height, width, _ = input_details[0]['shape']
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    
+    # Obtener dimensiones que espera el modelo (ej. 320x320)
+    _, input_h, input_w, _ = input_details[0]['shape']
 
-# 3. Cargar y preparar la imagen
-original_img = cv2.imread(IMAGE_PATH)
-if original_img is None:
-    print(f"Error: No se encontró la imagen en {IMAGE_PATH}")
-    exit()
+    # --- 3. PREPARAR LA IMAGEN ---
+    original_img = cv2.imread(IMAGE_PATH)
+    if original_img is None:
+        print(f"Error: No se pudo cargar la imagen {IMAGE_PATH}")
+        return
 
-h_orig, w_orig = original_img.shape[:2]
+    h_orig, w_orig = original_img.shape[:2]
 
-# AJUSTE PARA FLOAT32: RGB y Normalización 0-1 estricta
-rgb_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
-input_img = cv2.resize(rgb_img, (width, height))
-input_img = input_img.astype(np.float32) / 255.0  # Obligatorio para float32
-input_img = np.expand_dims(input_img, axis=0)
+    # YOLOv8 prefiere RGB. Convertimos y redimensionamos.
+    rgb_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
+    input_img = cv2.resize(rgb_img, (input_w, input_h))
 
-# 4. Inferencia
-interpreter.set_tensor(input_details[0]['index'], input_img)
-interpreter.invoke()
-output = interpreter.get_tensor(output_details[0]['index'])
+    # Normalización para Float32 (0 a 1)
+    input_img = input_img.astype(np.float32) / 255.0
+    input_img = np.expand_dims(input_img, axis=0)
 
-# 5. Post-procesamiento
-output = np.squeeze(output)
+    # --- 4. INFERENCIA ---
+    print("Ejecutando detección...")
+    interpreter.set_tensor(input_details[0]['index'], input_img)
+    interpreter.invoke()
+    output = interpreter.get_tensor(output_details[0]['index'])
 
-# YOLOv8 suele entregar [5, 2100]. Si es así, transponemos.
-if output.shape[0] == 5:
-    output = output.T
+    # --- 5. POST-PROCESAMIENTO ---
+    # Eliminar dimensiones innecesarias y transponer de [5, 2100] a [2100, 5]
+    output = np.squeeze(output)
+    if output.shape[0] == 5:
+        output = output.T
 
-# --- DIAGNÓSTICO EN CONSOLA ---
-max_conf = np.max(output[:, 4])
-print(f"Modelo cargado: {MODEL_PATH}")
-print(f"Confianza más alta encontrada: {max_conf:.4f}")
+    max_conf_encontrada = np.max(output[:, 4])
+    print(f"Confianza más alta detectada: {max_conf_encontrada:.4f}")
 
-if max_conf < CONF_THRESHOLD:
-    print("AVISO: No se alcanzó el umbral. Prueba bajando CONF_THRESHOLD.")
-# ------------------------------
-
-for detection in output:
-    conf = detection[4]
-    if conf > CONF_THRESHOLD:
-        cx, cy, w, h = detection[:4]
+    detecciones_reales = 0
+    for detection in output:
+        conf = detection[4]
         
-        # Escalar coordenadas a la imagen original
-        # Importante: cx, cy, w, h suelen venir en escala del modelo (0 a 320)
-        x1 = int((cx - w/2) * (w_orig / width))
-        y1 = int((cy - h/2) * (h_orig / height))
-        x2 = int((cx + w/2) * (w_orig / width))
-        y2 = int((cy + h/2) * (h_orig / height))
-        
-        # Dibujar
-        cv2.rectangle(original_img, (x1, y1), (x2, y2), (0, 255, 0), 3)
-        cv2.putText(original_img, f"Placa: {conf:.2f}", (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        if conf > CONF_THRESHOLD:
+            detecciones_reales += 1
+            cx, cy, w, h = detection[:4]
 
-cv2.imwrite("resultado_float32.jpg", original_img)
-print("Imagen guardada como 'resultado_float32.jpg'")
+            # DETERMINAR ESCALADO
+            # Si el valor máximo es <= 1.1, las coordenadas están normalizadas (0-1)
+            # Si es mayor, vienen en píxeles del modelo (0-320)
+            if np.max(detection[:4]) <= 1.1:
+                x1_raw, y1_raw = (cx - w/2) * w_orig, (cy - h/2) * h_orig
+                x2_raw, y2_raw = (cx + w/2) * w_orig, (cy + h/2) * h_orig
+            else:
+                x1_raw = (cx - w/2) * (w_orig / input_w)
+                y1_raw = (cy - h/2) * (h_orig / input_h)
+                x2_raw = (cx + w/2) * (w_orig / input_w)
+                y2_raw = (cy + h/2) * (h_orig / input_h)
+
+            # Convertir a enteros y asegurar que estén dentro de la imagen
+            x1, y1 = int(max(0, x1_raw)), int(max(0, y1_raw))
+            x2, y2 = int(min(w_orig, x2_raw)), int(min(h_orig, y2_raw))
+
+            print(f"Placa encontrada: [{x1}, {y1}, {x2}, {y2}] Conf: {conf:.2f}")
+
+            # --- 6. DIBUJAR ---
+            # Cuadro verde grueso
+            cv2.rectangle(original_img, (x1, y1), (x2, y2), (0, 255, 0), 4)
+            
+            # Fondo para el texto (mejora legibilidad)
+            cv2.rectangle(original_img, (x1, y1 - 35), (x1 + 150, y1), (0, 255, 0), -1)
+            cv2.putText(original_img, f"PLACA {conf:.2f}", (x1 + 5, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+
+    # --- 7. GUARDAR RESULTADO ---
+    if detecciones_reales > 0:
+        cv2.imwrite("resultado_final.jpg", original_img)
+        print(f"¡Éxito! Se detectaron {detecciones_reales} placas.")
+        print("Revisa el archivo 'resultado_final.jpg'")
+    else:
+        print("No se dibujó nada porque ninguna detección superó el umbral.")
+
+if __name__ == "__main__":
+    main()
