@@ -1,63 +1,80 @@
 import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
+import pytesseract
 
-# 1. Cargar el modelo e iniciar el intérprete
-interpreter = tflite.Interpreter(model_path="best_int8.tflite")
-interpreter.allocate_tensors()
+# --- CONFIGURACIÓN ---
+MODEL_PATH = "best_float32.tflite"
+IMAGE_PATH = "tu_foto_de_placa.jpg"
+CONF_THRESHOLD = 0.35
 
-# Obtener detalles de entrada y salida
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-input_shape = input_details[0]['shape']  # Debería ser [1, 320, 320, 3]
+def limpiar_placa(roi):
+    """Optimiza el recorte de la placa para mejorar el OCR"""
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    # Aumentar contraste y binarizar (Blanco y Negro puro)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return binary
 
-def preprocess(frame, input_size):
-    """Prepara la imagen de la cámara para el modelo"""
-    img = cv2.resize(frame, (input_size, input_size))
-    img = img.astype(np.float32) / 255.0  # Normalizar 0-1
-    img = np.expand_dims(img, axis=0)     # Añadir dimensión de batch [1, 320, 320, 3]
-    return img
+def main():
+    interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    _, input_h, input_w, _ = input_details[0]['shape']
 
-cap = cv2.VideoCapture(0)
+    original_img = cv2.imread(IMAGE_PATH)
+    if original_img is None: return
+    h_orig, w_orig = original_img.shape[:2]
 
-print("Iniciando detección ligera en Pi 3...")
+    # Pre-proceso para el modelo
+    rgb_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
+    input_img = cv2.resize(rgb_img, (input_w, input_h))
+    input_img = input_img.astype(np.float32) / 255.0
+    input_img = np.expand_dims(input_img, axis=0)
 
-while True:
-    ret, frame = cap.read()
-    if not ret: break
-
-    # Pre-procesar
-    input_data = preprocess(frame, input_shape[1])
-
-    # Ejecutar Inferencia
-    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.set_tensor(input_details[0]['index'], input_img)
     interpreter.invoke()
+    output = np.squeeze(interpreter.get_tensor(output_details[0]['index']))
+    if output.shape[0] == 5: output = output.T
 
-    # Obtener resultados
-    # YOLOv8 en TFLite suele entregar [1, 5, 2100] -> (x, y, w, h, conf)
-    output_data = interpreter.get_tensor(output_details[0]['index'])
-    output_data = np.squeeze(output_data).T # Transponer para manejarlo mejor
-
-    for detection in output_data:
-        confidence = detection[4]
-        if confidence > 0.4:  # Tu umbral de placa
-            # YOLO entrega valores normalizados o en píxeles del imgsz
-            # Necesitamos re-escalar a los píxeles de la cámara (640x480)
+    for detection in output:
+        conf = detection[4]
+        if conf > CONF_THRESHOLD:
             cx, cy, w, h = detection[:4]
             
-            # Convertir de centro(x,y) a esquinas(x1,y1)
-            x1 = int((cx - w/2) * frame.shape[1] / input_shape[1])
-            y1 = int((cy - h/2) * frame.shape[0] / input_shape[2])
-            x2 = int((cx + w/2) * frame.shape[1] / input_shape[1])
-            y2 = int((cy + h/2) * frame.shape[0] / input_shape[2])
+            # Cálculo de coordenadas
+            if np.max(detection[:4]) <= 1.1:
+                x1, y1 = int((cx-w/2)*w_orig), int((cy-h/2)*h_orig)
+                x2, y2 = int((cx+w/2)*w_orig), int((cy+h/2)*h_orig)
+            else:
+                x1, y1 = int((cx-w/2)*(w_orig/input_w)), int((cy-h/2)*(h_orig/input_h))
+                x2, y2 = int((cx+w/2)*(w_orig/input_w)), int((cy+h/2)*(h_orig/input_h))
 
-            # Dibujar
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f"PLACA {confidence:.2f}", (x1, y1-10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # Ajustar bordes
+            x1, y1, x2, y2 = max(0, x1), max(0, y1), min(w_orig, x2), min(h_orig, y2)
 
-    cv2.imshow("ALPR Lite Colombia", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'): break
+            # --- PARTE NUEVA: OCR ---
+            # 1. Recortar la placa de la imagen original
+            placa_roi = original_img[y1:y2, x1:x2]
+            
+            if placa_roi.size > 0:
+                # 2. Limpiar imagen para Tesseract
+                placa_limpia = limpiar_placa(placa_roi)
+                
+                # 3. Ejecutar OCR (Configuración para texto corto y alfanumérico)
+                config_tess = "--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                texto_placa = pytesseract.image_to_string(placa_limpia, config=config_tess)
+                texto_placa = texto_placa.strip()
 
-cap.release()
-cv2.destroyAllWindows()
+                print(f"Detección: {texto_placa} (Conf: {conf:.2f})")
+
+                # Dibujar resultados
+                cv2.rectangle(original_img, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                cv2.putText(original_img, f"ID: {texto_placa}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+    cv2.imwrite("resultado_ocr.jpg", original_img)
+    print("Proceso completo. Revisa resultado_ocr.jpg")
+
+if __name__ == "__main__":
+    main()
