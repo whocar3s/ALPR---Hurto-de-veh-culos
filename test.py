@@ -48,10 +48,10 @@ def corregir_formato(texto, es_moto=False):
         texto.upper()
     )
 
-    if len(texto) != 6:
-        return texto
-
     texto = list(texto)
+
+    if len(texto) < 6:
+        return "".join(texto)
 
     # ====================================
     # PRIMEROS 3 -> LETRAS
@@ -384,7 +384,7 @@ def main():
         )
     )
 
-    # YOLOv8 TFLite
+    # YOLOv8
     if output.shape[0] < output.shape[1]:
         output = output.T
 
@@ -440,7 +440,7 @@ def main():
         return
 
     # ====================================
-    # MEJOR DETECCIÓN
+    # SOLO MEJOR DETECCIÓN
     # ====================================
 
     best_box, best_conf = max(
@@ -450,7 +450,6 @@ def main():
 
     x1, y1, x2, y2 = best_box
 
-    # límites
     x1 = max(0, x1)
     y1 = max(0, y1)
 
@@ -478,7 +477,7 @@ def main():
     es_moto = not (ancho > (largo * 2))
 
     # ====================================
-    # PERSPECTIVA
+    # CORREGIR PERSPECTIVA
     # ====================================
 
     placa = corregir_perspectiva(
@@ -511,28 +510,22 @@ def main():
             config=config
         )
 
-        # limpiar OCR
+        # limpiar
         texto = limpiar(texto)
 
-        # corregir formato colombiano
+        # corregir formato
         texto = corregir_formato(
-            texto,
-            es_moto
-        )
-
-        # validar placa
-        placa_valida = validar_placa(
             texto,
             es_moto
         )
 
         print(f"{nombre_filtro}: {texto}")
 
-        # guardar válidas
-        if placa_valida is not None:
+        # guardar cualquier texto de 6 caracteres
+        if len(texto) == 6:
 
             placas_detectadas.append(
-                placa_valida
+                texto
             )
 
     # ====================================
@@ -552,10 +545,27 @@ def main():
 
             conteo[placa_detectada] += 1
 
-        mejor_valido = max(
+        # más repetida
+        candidata = max(
             conteo,
             key=conteo.get
         )
+
+        # validar solo la ganadora
+        placa_validada = validar_placa(
+            candidata,
+            es_moto
+        )
+
+        # si es válida
+        if placa_validada is not None:
+
+            mejor_valido = placa_validada
+
+        # si no, usar candidata
+        else:
+
+            mejor_valido = candidata
 
     # ====================================
     # RESULTADO FINAL
