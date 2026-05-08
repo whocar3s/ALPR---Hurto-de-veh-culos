@@ -14,16 +14,30 @@ IMAGE_PATH = "tu_foto.jpg"
 CONF_THRESHOLD = 0.25
 
 # ============================================
-# OCR CONFIG
+# CONFIG OCR
 # ============================================
 
-OCR_CONFIG = (
+config = (
     "--psm 7 "
     "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 # ============================================
-# VALIDACIÓN PLACAS COLOMBIANAS
+# LIMPIAR TEXTO
+# ============================================
+
+def limpiar(texto):
+
+    texto = texto.strip()
+
+    texto = texto.replace(" ", "")
+    texto = texto.replace("\n", "")
+    texto = texto.replace("\x0c", "")
+
+    return texto
+
+# ============================================
+# VALIDAR PLACA
 # ============================================
 
 def validar_placa(texto, es_moto=False):
@@ -37,50 +51,49 @@ def validar_placa(texto, es_moto=False):
     patron_moto  = r'^[A-Z]{3}[0-9]{2}[A-I]$'
 
     if es_moto:
+
         if re.match(patron_moto, texto):
             return texto
+
     else:
+
         if re.match(patron_carro, texto):
             return texto
 
     return None
 
 # ============================================
-# DETECCIÓN HSV AMARILLO
+# CORREGIR PERSPECTIVA
 # ============================================
 
-def detectar_placa_amarilla(roi):
+def corregir_perspectiva(img):
 
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
     lower_yellow = np.array([15, 40, 40])
     upper_yellow = np.array([40, 255, 255])
 
-    mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    mask = cv2.inRange(
+        hsv,
+        lower_yellow,
+        upper_yellow
+    )
 
-    kernel = np.ones((5,5), np.uint8)
+    kernel = np.ones((2,2), np.uint8)
 
     mask = cv2.morphologyEx(
         mask,
         cv2.MORPH_CLOSE,
         kernel,
-        iterations=2
+        iterations=1
     )
 
     mask = cv2.morphologyEx(
         mask,
         cv2.MORPH_OPEN,
         kernel,
-        iterations=1
+        iterations=3
     )
-
-    return mask
-
-# ============================================
-# OBTENER ESQUINAS
-# ============================================
-
-def obtener_esquinas(mask):
 
     ys, xs = np.where(mask == 255)
 
@@ -94,18 +107,12 @@ def obtener_esquinas(mask):
     bottom_left = points[np.argmin(points[:,0] - points[:,1])]
     bottom_right = points[np.argmax(points[:,0] + points[:,1])]
 
-    return np.float32([
-        top_left,
-        top_right,
+    pts1 = np.float32([
+        top_left - 5,
+        top_right - 5,
         bottom_left,
         bottom_right
     ])
-
-# ============================================
-# PERSPECTIVE TRANSFORM
-# ============================================
-
-def corregir_perspectiva(roi, pts1):
 
     width = 300
     height = 100
@@ -117,10 +124,13 @@ def corregir_perspectiva(roi, pts1):
         [width, height]
     ])
 
-    M = cv2.getPerspectiveTransform(pts1, pts2)
+    M = cv2.getPerspectiveTransform(
+        pts1,
+        pts2
+    )
 
     dst = cv2.warpPerspective(
-        roi,
+        img,
         M,
         (width, height)
     )
@@ -128,25 +138,56 @@ def corregir_perspectiva(roi, pts1):
     return dst
 
 # ============================================
-# PREPROCESSING OCR
+# GENERAR FILTROS OCR
 # ============================================
 
-def preprocess_ocr(img):
+def generar_filtros(img):
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    filtros = {}
 
-    gray = cv2.resize(
+    # ORIGINAL
+    filtros["original"] = img
+
+    # GRISES
+    gray = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    filtros["gray"] = gray
+
+    # RESIZE
+    resize = cv2.resize(
         gray,
         None,
         fx=2,
-        fy=2,
-        interpolation=cv2.INTER_CUBIC
+        fy=2
     )
 
-    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    filtros["resize"] = resize
 
-    thresh = cv2.adaptiveThreshold(
+    # BLUR
+    blur = cv2.GaussianBlur(
+        resize,
+        (5,5),
+        0
+    )
+
+    filtros["blur"] = blur
+
+    # THRESHOLD
+    _, thresh = cv2.threshold(
         blur,
+        150,
+        255,
+        cv2.THRESH_BINARY
+    )
+
+    filtros["threshold"] = thresh
+
+    # ADAPTIVE
+    adapt = cv2.adaptiveThreshold(
+        resize,
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
@@ -154,7 +195,14 @@ def preprocess_ocr(img):
         2
     )
 
-    return thresh
+    filtros["adaptive"] = adapt
+
+    # INVERT
+    invert = cv2.bitwise_not(adapt)
+
+    filtros["invert"] = invert
+
+    return filtros
 
 # ============================================
 # MAIN
@@ -178,7 +226,7 @@ def main():
     _, in_h, in_w, _ = input_details[0]['shape']
 
     # =========================
-    # CARGAR IMAGEN
+    # LEER IMAGEN
     # =========================
 
     img = cv2.imread(IMAGE_PATH)
@@ -190,10 +238,13 @@ def main():
     h_orig, w_orig = img.shape[:2]
 
     # =========================
-    # PREPROCESAMIENTO YOLO
+    # PREPROCESS YOLO
     # =========================
 
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    rgb = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2RGB
+    )
 
     input_data = cv2.resize(
         rgb,
@@ -224,7 +275,7 @@ def main():
         )
     )
 
-    # YOLOv8
+    # YOLOv8 TFLite
     if output.shape[0] < output.shape[1]:
         output = output.T
 
@@ -236,13 +287,15 @@ def main():
 
     for row in output:
 
-        conf = np.max(row[4:])
+        probabilidades = row[4:]
+
+        conf = np.max(probabilidades)
 
         if conf > CONF_THRESHOLD:
 
             cx, cy, w, h = row[:4]
 
-            # coordenadas
+            # NORMALIZADO
             if np.max(row[:4]) <= 1.01:
 
                 x1 = int((cx - w/2) * w_orig)
@@ -250,6 +303,7 @@ def main():
                 x2 = int((cx + w/2) * w_orig)
                 y2 = int((cy + h/2) * h_orig)
 
+            # ESCALADO
             else:
 
                 x1 = int((cx - w/2) * (w_orig / in_w))
@@ -262,16 +316,21 @@ def main():
             )
 
     # =========================
-    # NO DETECCIONES
+    # SIN DETECCIONES
     # =========================
 
     if len(detecciones) == 0:
 
         print("No se detectaron placas")
+        print(
+            "Conf máxima:",
+            np.max(output[:,4:])
+        )
+
         return
 
     # =========================
-    # MEJOR DETECCIÓN
+    # SOLO MEJOR DETECCIÓN
     # =========================
 
     best_box, best_conf = max(
@@ -289,7 +348,7 @@ def main():
     y2 = min(h_orig, y2)
 
     # =========================
-    # RECORTE
+    # ROI
     # =========================
 
     roi = img[y1:y2, x1:x2]
@@ -297,54 +356,6 @@ def main():
     if roi.size == 0:
         print("ROI vacía")
         return
-
-    # =========================
-    # DETECTAR AMARILLO
-    # =========================
-
-    mask = detectar_placa_amarilla(roi)
-
-    # =========================
-    # OBTENER ESQUINAS
-    # =========================
-
-    pts1 = obtener_esquinas(mask)
-
-    if pts1 is None:
-        print("No se encontraron esquinas")
-        return
-
-    # =========================
-    # CORREGIR PERSPECTIVA
-    # =========================
-
-    placa_recta = corregir_perspectiva(
-        roi,
-        pts1
-    )
-
-    # =========================
-    # PREPROCESS OCR
-    # =========================
-
-    ocr_img = preprocess_ocr(
-        placa_recta
-    )
-
-    # =========================
-    # OCR
-    # =========================
-
-    texto = pytesseract.image_to_string(
-        ocr_img,
-        config=OCR_CONFIG
-    )
-
-    texto = re.sub(
-        r'[^A-Z0-9]',
-        '',
-        texto.upper()
-    )
 
     # =========================
     # CLASIFICAR
@@ -355,25 +366,81 @@ def main():
 
     es_moto = not (ancho > (largo * 2))
 
-    placa_final = validar_placa(
-        texto,
-        es_moto
+    # =========================
+    # CORREGIR PERSPECTIVA
+    # =========================
+
+    placa = corregir_perspectiva(roi)
+
+    if placa is None:
+
+        print("No se pudo corregir perspectiva")
+        return
+
+    # =========================
+    # FILTROS OCR
+    # =========================
+
+    filtros = generar_filtros(
+        placa
     )
 
+    mejor_texto = ""
+    mejor_valido = None
+
     # =========================
-    # MOSTRAR RESULTADO
+    # OCR POR FILTRO
     # =========================
 
-    print("OCR RAW:", texto)
+    for nombre_filtro, imagen_proc in filtros.items():
 
-    if placa_final:
-        print("PLACA VÁLIDA:", placa_final)
+        texto = pytesseract.image_to_string(
+            imagen_proc,
+            config=config
+        )
+
+        texto = limpiar(texto)
+
+        placa_valida = validar_placa(
+            texto,
+            es_moto
+        )
+
+        print(
+            f"{nombre_filtro}: {texto}"
+        )
+
+        # guardar mejor válido
+        if placa_valida is not None:
+
+            mejor_texto = texto
+            mejor_valido = placa_valida
+
+    # =========================
+    # RESULTADO FINAL
+    # =========================
+
+    print("\n===================")
+
+    if mejor_valido:
+
+        print("PLACA:", mejor_valido)
+
     else:
-        print("Placa inválida")
+
+        print("No se obtuvo placa válida")
+
+    print("===================\n")
 
     # =========================
     # DIBUJAR
     # =========================
+
+    texto_final = (
+        mejor_valido
+        if mejor_valido
+        else "INVALIDA"
+    )
 
     cv2.rectangle(
         img,
@@ -385,7 +452,7 @@ def main():
 
     cv2.putText(
         img,
-        texto,
+        texto_final,
         (x1, y1 - 10),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
@@ -394,14 +461,30 @@ def main():
     )
 
     # =========================
-    # DEBUG IMAGES
+    # DEBUG
     # =========================
 
-    cv2.imwrite("debug_01_roi.jpg", roi)
-    cv2.imwrite("debug_02_mask.jpg", mask)
-    cv2.imwrite("debug_03_rectificada.jpg", placa_recta)
-    cv2.imwrite("debug_04_ocr.jpg", ocr_img)
-    cv2.imwrite("debug_final.jpg", img)
+    cv2.imwrite(
+        "debug_01_roi.jpg",
+        roi
+    )
+
+    cv2.imwrite(
+        "debug_02_placa.jpg",
+        placa
+    )
+
+    for nombre, imagen_proc in filtros.items():
+
+        cv2.imwrite(
+            f"debug_{nombre}.jpg",
+            imagen_proc
+        )
+
+    cv2.imwrite(
+        "debug_final.jpg",
+        img
+    )
 
     print("Imágenes debug guardadas")
 
