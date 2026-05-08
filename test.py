@@ -37,12 +37,117 @@ def limpiar(texto):
     return texto
 
 # ============================================
+# CORREGIR FORMATO PLACA
+# ============================================
+
+def corregir_formato(texto, es_moto=False):
+
+    texto = re.sub(
+        r'[^A-Z0-9]',
+        '',
+        texto.upper()
+    )
+
+    if len(texto) != 6:
+        return texto
+
+    texto = list(texto)
+
+    # ====================================
+    # PRIMEROS 3 -> LETRAS
+    # ====================================
+
+    for i in range(3):
+
+        if texto[i] == "0":
+            texto[i] = "O"
+
+        elif texto[i] == "1":
+            texto[i] = "I"
+
+        elif texto[i] == "2":
+            texto[i] = "Z"
+
+        elif texto[i] == "5":
+            texto[i] = "S"
+
+        elif texto[i] == "8":
+            texto[i] = "B"
+
+    # ====================================
+    # POSICIONES 4 Y 5 -> NÚMEROS
+    # ====================================
+
+    for i in [3,4]:
+
+        if texto[i] == "O":
+            texto[i] = "0"
+
+        elif texto[i] == "I":
+            texto[i] = "1"
+
+        elif texto[i] == "Z":
+            texto[i] = "2"
+
+        elif texto[i] == "S":
+            texto[i] = "5"
+
+        elif texto[i] == "B":
+            texto[i] = "8"
+
+    # ====================================
+    # ÚLTIMO CARÁCTER
+    # ====================================
+
+    # CARRO -> número
+    if not es_moto:
+
+        if texto[5] == "O":
+            texto[5] = "0"
+
+        elif texto[5] == "I":
+            texto[5] = "1"
+
+        elif texto[5] == "Z":
+            texto[5] = "2"
+
+        elif texto[5] == "S":
+            texto[5] = "5"
+
+        elif texto[5] == "B":
+            texto[5] = "8"
+
+    # MOTO -> letra
+    else:
+
+        if texto[5] == "0":
+            texto[5] = "O"
+
+        elif texto[5] == "1":
+            texto[5] = "I"
+
+        elif texto[5] == "2":
+            texto[5] = "Z"
+
+        elif texto[5] == "5":
+            texto[5] = "S"
+
+        elif texto[5] == "8":
+            texto[5] = "B"
+
+    return "".join(texto)
+
+# ============================================
 # VALIDAR PLACA
 # ============================================
 
 def validar_placa(texto, es_moto=False):
 
-    texto = re.sub(r'[^A-Z0-9]', '', texto.upper())
+    texto = re.sub(
+        r'[^A-Z0-9]',
+        '',
+        texto.upper()
+    )
 
     if len(texto) != 6:
         return None
@@ -68,7 +173,10 @@ def validar_placa(texto, es_moto=False):
 
 def corregir_perspectiva(img):
 
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2HSV
+    )
 
     lower_yellow = np.array([15, 40, 40])
     upper_yellow = np.array([40, 255, 255])
@@ -210,9 +318,9 @@ def generar_filtros(img):
 
 def main():
 
-    # =========================
+    # ====================================
     # CARGAR MODELO
-    # =========================
+    # ====================================
 
     interpreter = tflite.Interpreter(
         model_path=MODEL_PATH
@@ -225,21 +333,22 @@ def main():
 
     _, in_h, in_w, _ = input_details[0]['shape']
 
-    # =========================
+    # ====================================
     # LEER IMAGEN
-    # =========================
+    # ====================================
 
     img = cv2.imread(IMAGE_PATH)
 
     if img is None:
+
         print("No se pudo cargar la imagen")
         return
 
     h_orig, w_orig = img.shape[:2]
 
-    # =========================
+    # ====================================
     # PREPROCESS YOLO
-    # =========================
+    # ====================================
 
     rgb = cv2.cvtColor(
         img,
@@ -258,9 +367,9 @@ def main():
         axis=0
     )
 
-    # =========================
+    # ====================================
     # INFERENCIA
-    # =========================
+    # ====================================
 
     interpreter.set_tensor(
         input_details[0]['index'],
@@ -281,9 +390,9 @@ def main():
 
     detecciones = []
 
-    # =========================
+    # ====================================
     # LEER DETECCIONES
-    # =========================
+    # ====================================
 
     for row in output:
 
@@ -315,13 +424,14 @@ def main():
                 ((x1,y1,x2,y2), conf)
             )
 
-    # =========================
+    # ====================================
     # SIN DETECCIONES
-    # =========================
+    # ====================================
 
     if len(detecciones) == 0:
 
         print("No se detectaron placas")
+
         print(
             "Conf máxima:",
             np.max(output[:,4:])
@@ -329,9 +439,9 @@ def main():
 
         return
 
-    # =========================
-    # SOLO MEJOR DETECCIÓN
-    # =========================
+    # ====================================
+    # MEJOR DETECCIÓN
+    # ====================================
 
     best_box, best_conf = max(
         detecciones,
@@ -347,50 +457,52 @@ def main():
     x2 = min(w_orig, x2)
     y2 = min(h_orig, y2)
 
-    # =========================
+    # ====================================
     # ROI
-    # =========================
+    # ====================================
 
     roi = img[y1:y2, x1:x2]
 
     if roi.size == 0:
+
         print("ROI vacía")
         return
 
-    # =========================
-    # CLASIFICAR
-    # =========================
+    # ====================================
+    # CLASIFICAR VEHÍCULO
+    # ====================================
 
     ancho = x2 - x1
     largo = y2 - y1
 
     es_moto = not (ancho > (largo * 2))
 
-    # =========================
-    # CORREGIR PERSPECTIVA
-    # =========================
+    # ====================================
+    # PERSPECTIVA
+    # ====================================
 
-    placa = corregir_perspectiva(roi)
+    placa = corregir_perspectiva(
+        roi
+    )
 
     if placa is None:
 
         print("No se pudo corregir perspectiva")
         return
 
-    # =========================
+    # ====================================
     # FILTROS OCR
-    # =========================
+    # ====================================
 
     filtros = generar_filtros(
         placa
     )
 
-    mejor_texto = ""
-    mejor_valido = None
+    placas_detectadas = []
 
-    # =========================
+    # ====================================
     # OCR POR FILTRO
-    # =========================
+    # ====================================
 
     for nombre_filtro, imagen_proc in filtros.items():
 
@@ -399,32 +511,61 @@ def main():
             config=config
         )
 
+        # limpiar OCR
         texto = limpiar(texto)
 
+        # corregir formato colombiano
+        texto = corregir_formato(
+            texto,
+            es_moto
+        )
+
+        # validar placa
         placa_valida = validar_placa(
             texto,
             es_moto
         )
 
-        print(
-            f"{nombre_filtro}: {texto}"
-        )
+        print(f"{nombre_filtro}: {texto}")
 
-        # guardar mejor válido
+        # guardar válidas
         if placa_valida is not None:
 
-            mejor_texto = texto
-            mejor_valido = placa_valida
+            placas_detectadas.append(
+                placa_valida
+            )
 
-    # =========================
+    # ====================================
+    # PLACA MÁS REPETIDA
+    # ====================================
+
+    mejor_valido = None
+
+    if len(placas_detectadas) > 0:
+
+        conteo = {}
+
+        for placa_detectada in placas_detectadas:
+
+            if placa_detectada not in conteo:
+                conteo[placa_detectada] = 0
+
+            conteo[placa_detectada] += 1
+
+        mejor_valido = max(
+            conteo,
+            key=conteo.get
+        )
+
+    # ====================================
     # RESULTADO FINAL
-    # =========================
+    # ====================================
 
     print("\n===================")
 
     if mejor_valido:
 
-        print("PLACA:", mejor_valido)
+        print("PLACA FINAL:", mejor_valido)
 
     else:
 
@@ -432,9 +573,9 @@ def main():
 
     print("===================\n")
 
-    # =========================
-    # DIBUJAR
-    # =========================
+    # ====================================
+    # DIBUJAR RESULTADO
+    # ====================================
 
     texto_final = (
         mejor_valido
@@ -460,9 +601,9 @@ def main():
         2
     )
 
-    # =========================
-    # DEBUG
-    # =========================
+    # ====================================
+    # GUARDAR DEBUG
+    # ====================================
 
     cv2.imwrite(
         "debug_01_roi.jpg",
