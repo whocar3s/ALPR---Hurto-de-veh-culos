@@ -1,5 +1,5 @@
 import cv2
-import numpy as nphttps://github.com/whocar3s/ALPR---Hurto-de-veh-culos/settings
+import numpy as np
 import tflite_runtime.interpreter as tflite
 import pytesseract
 import os
