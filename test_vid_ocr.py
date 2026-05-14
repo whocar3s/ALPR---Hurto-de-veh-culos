@@ -12,7 +12,7 @@ import re
 
 MODEL_PATH = "best_float32.tflite"
 
-# Webcam
+# Webcam USB
 CAMERA_SOURCE = 0
 
 # RTSP
@@ -34,7 +34,7 @@ OCR_CONFIG = (
 )
 
 # ============================================
-# LIMPIAR TEXTO
+# LIMPIAR TEXTO OCR
 # ============================================
 
 def limpiar_texto(texto):
@@ -54,7 +54,7 @@ def limpiar_texto(texto):
     return texto
 
 # ============================================
-# VALIDAR PLACA
+# VALIDAR FORMATO PLACA
 # ============================================
 
 def validar_placa(texto):
@@ -67,32 +67,68 @@ def validar_placa(texto):
     return False
 
 # ============================================
-# PREPROCESAMIENTO OCR
+# GENERAR FILTROS OCR
 # ============================================
 
-def procesar_ocr(img):
+def generar_filtros(img):
+
+    filtros = {}
+
+    # ====================================
+    # GRAY
+    # ====================================
 
     gray = cv2.cvtColor(
         img,
         cv2.COLOR_BGR2GRAY
     )
 
-    # resize grande ayuda muchísimo
-    gray = cv2.resize(
+    filtros["gray"] = gray
+
+    # ====================================
+    # RESIZE
+    # ====================================
+
+    resize = cv2.resize(
         gray,
         None,
         fx=3,
         fy=3
     )
 
+    filtros["resize"] = resize
+
+    # ====================================
+    # BLUR
+    # ====================================
+
     blur = cv2.GaussianBlur(
-        gray,
+        resize,
         (5,5),
         0
     )
 
-    thresh = cv2.adaptiveThreshold(
+    filtros["blur"] = blur
+
+    # ====================================
+    # THRESHOLD
+    # ====================================
+
+    _, thresh = cv2.threshold(
         blur,
+        150,
+        255,
+        cv2.THRESH_BINARY
+    )
+
+    filtros["threshold"] = thresh
+
+    # ====================================
+    # ADAPTIVE
+    # ====================================
+
+    adaptive = cv2.adaptiveThreshold(
+        resize,
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
@@ -100,24 +136,67 @@ def procesar_ocr(img):
         2
     )
 
-    return thresh
+    filtros["adaptive"] = adaptive
+
+    # ====================================
+    # INVERT
+    # ====================================
+
+    invert = cv2.bitwise_not(
+        adaptive
+    )
+
+    filtros["invert"] = invert
+
+    return filtros
 
 # ============================================
-# OCR
+# OCR MULTIFILTRO
 # ============================================
 
 def leer_placa(roi):
 
-    proc = procesar_ocr(roi)
+    filtros = generar_filtros(roi)
 
-    texto = pytesseract.image_to_string(
-        proc,
-        config=OCR_CONFIG
+    resultados = []
+
+    # ====================================
+    # OCR POR FILTRO
+    # ====================================
+
+    for nombre, imagen in filtros.items():
+
+        texto = pytesseract.image_to_string(
+            imagen,
+            config=OCR_CONFIG
+        )
+
+        texto = limpiar_texto(texto)
+
+        print(f"[{nombre}] -> {texto}")
+
+        # guardar posibles placas
+        if len(texto) >= 5:
+
+            resultados.append(texto)
+
+    # ====================================
+    # SIN RESULTADOS
+    # ====================================
+
+    if len(resultados) == 0:
+        return "", filtros
+
+    # ====================================
+    # MEJOR RESULTADO
+    # ====================================
+
+    mejor = max(
+        resultados,
+        key=len
     )
 
-    texto = limpiar_texto(texto)
-
-    return texto, proc
+    return mejor, filtros
 
 # ============================================
 # MAIN
@@ -126,7 +205,7 @@ def leer_placa(roi):
 def main():
 
     # ====================================
-    # MODELO
+    # CARGAR MODELO
     # ====================================
 
     interpreter = tflite.Interpreter(
@@ -140,10 +219,10 @@ def main():
 
     _, in_h, in_w, _ = input_details[0]['shape']
 
-    print("===================================")
+    print("\n===================================")
     print("MODELO CARGADO")
-    print("Input shape:", input_details[0]['shape'])
-    print("===================================")
+    print("Input:", input_details[0]['shape'])
+    print("===================================\n")
 
     # ====================================
     # CÁMARA
@@ -156,12 +235,17 @@ def main():
         print("No se pudo abrir cámara")
         return
 
+    # mejor para Raspberry
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-    print("📷 Cámara iniciada")
+    print("Cámara iniciada\n")
+
+    # ====================================
+    # CONTROL
+    # ====================================
 
     ultimo_guardado = 0
     contador = 0
@@ -233,10 +317,13 @@ def main():
         max_conf = 0
 
         # ====================================
-        # DETECCIONES
+        # LEER DETECCIONES
         # ====================================
 
         for row in output:
+
+            # formato:
+            # [x, y, w, h, conf]
 
             conf = row[4]
 
@@ -248,7 +335,10 @@ def main():
 
             cx, cy, w, h = row[:4]
 
+            # ====================================
             # NORMALIZADO
+            # ====================================
+
             if np.max(row[:4]) <= 1.01:
 
                 x1 = int((cx - w/2) * w_orig)
@@ -256,7 +346,10 @@ def main():
                 x2 = int((cx + w/2) * w_orig)
                 y2 = int((cy + h/2) * h_orig)
 
+            # ====================================
             # ESCALADO
+            # ====================================
+
             else:
 
                 x1 = int((cx - w/2) * (w_orig / in_w))
@@ -264,6 +357,7 @@ def main():
                 x2 = int((cx + w/2) * (w_orig / in_w))
                 y2 = int((cy + h/2) * (h_orig / in_h))
 
+            # límites
             x1 = max(0, x1)
             y1 = max(0, y1)
 
@@ -278,32 +372,15 @@ def main():
             )
 
         # ====================================
-        # DEBUG
-        # ====================================
-
-        cv2.putText(
-            frame,
-            f"Max conf: {max_conf:.2f}",
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0,255,255),
-            2
-        )
-
-        # ====================================
-        # NO DETECCIONES
+        # SIN DETECCIONES
         # ====================================
 
         if len(detecciones) == 0:
 
-            cv2.imshow(
-                "ALPR",
-                frame
+            print(
+                f"Sin detección | Max conf: {max_conf:.3f}",
+                end="\r"
             )
-
-            if cv2.waitKey(1) & 0xFF == 27:
-                break
 
             continue
 
@@ -318,6 +395,10 @@ def main():
 
         x1, y1, x2, y2 = best_box
 
+        # ====================================
+        # ROI
+        # ====================================
+
         roi = frame[y1:y2, x1:x2]
 
         if roi.size == 0:
@@ -327,115 +408,62 @@ def main():
         # OCR
         # ====================================
 
-        texto, proc = leer_placa(roi)
-
-        # ====================================
-        # VALIDAR
-        # ====================================
+        texto, filtros = leer_placa(roi)
 
         placa_valida = validar_placa(texto)
 
         # ====================================
-        # COLOR
-        # ====================================
-
-        color = (
-            (0,255,0)
-            if placa_valida
-            else (0,0,255)
-        )
-
-        # ====================================
-        # DIBUJAR
-        # ====================================
-
-        cv2.rectangle(
-            frame,
-            (x1, y1),
-            (x2, y2),
-            color,
-            2
-        )
-
-        texto_mostrar = (
-            texto
-            if texto != ""
-            else "LEYENDO..."
-        )
-
-        cv2.putText(
-            frame,
-            texto_mostrar,
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.9,
-            color,
-            2
-        )
-
-        # ====================================
-        # MOSTRAR DEBUG
-        # ====================================
-
-        cv2.imshow(
-            "ROI",
-            roi
-        )
-
-        cv2.imshow(
-            "OCR",
-            proc
-        )
-
-        # ====================================
-        # GUARDAR DETECCIONES
+        # GUARDAR CADA 2 SEGUNDOS
         # ====================================
 
         tiempo_actual = time.time()
 
-        if placa_valida:
+        if tiempo_actual - ultimo_guardado > 2:
 
-            if tiempo_actual - ultimo_guardado > 2:
+            # ====================================
+            # GUARDAR ROI
+            # ====================================
 
-                nombre = (
+            roi_name = (
+                f"{SAVE_FOLDER}/"
+                f"placa_{contador}.jpg"
+            )
+
+            cv2.imwrite(
+                roi_name,
+                roi
+            )
+
+            # ====================================
+            # GUARDAR FILTROS
+            # ====================================
+
+            for nombre_filtro, imagen_filtro in filtros.items():
+
+                filtro_name = (
                     f"{SAVE_FOLDER}/"
-                    f"{texto}_{contador}.jpg"
+                    f"{contador}_{nombre_filtro}.jpg"
                 )
 
                 cv2.imwrite(
-                    nombre,
-                    roi
+                    filtro_name,
+                    imagen_filtro
                 )
 
-                print("\n======================")
-                print("PLACA DETECTADA")
-                print("Placa:", texto)
-                print("Confianza:", round(best_conf, 3))
-                print("Guardada:", nombre)
-                print("======================\n")
+            # ====================================
+            # CONSOLA
+            # ====================================
 
-                ultimo_guardado = tiempo_actual
-                contador += 1
+            print("\n===================================")
+            print("PLACA DETECTADA")
+            print("OCR:", texto)
+            print("VALIDA:", placa_valida)
+            print("CONF:", round(best_conf, 3))
+            print("ROI:", roi_name)
+            print("===================================\n")
 
-        # ====================================
-        # MOSTRAR FRAME
-        # ====================================
-
-        cv2.imshow(
-            "ALPR",
-            frame
-        )
-
-        # ESC = salir
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
-
-    # ====================================
-    # RELEASE
-    # ====================================
-
-    cap.release()
-    cv2.destroyAllWindows()
+            ultimo_guardado = tiempo_actual
+            contador += 1
 
 # ============================================
 # START
