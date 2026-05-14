@@ -1,5 +1,5 @@
 import cv2
-import numpy as np
+import numpy as nphttps://github.com/whocar3s/ALPR---Hurto-de-veh-culos/settings
 import tflite_runtime.interpreter as tflite
 import pytesseract
 import os
@@ -65,6 +65,89 @@ def validar_placa(texto):
         return True
 
     return False
+
+# ============================================
+# CORREGIR PERSPECTIVA
+# ============================================
+
+def corregir_perspectiva(img):
+
+    hsv = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2HSV
+    )
+
+    # amarillo Colombia
+    lower_yellow = np.array([15, 40, 40])
+    upper_yellow = np.array([40, 255, 255])
+
+    mask = cv2.inRange(
+        hsv,
+        lower_yellow,
+        upper_yellow
+    )
+
+    kernel = np.ones((2,2), np.uint8)
+
+    # limpiar ruido
+    mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_CLOSE,
+        kernel,
+        iterations=1
+    )
+
+    mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_OPEN,
+        kernel,
+        iterations=2
+    )
+
+    ys, xs = np.where(mask == 255)
+
+    # sin amarillo
+    if len(xs) == 0:
+        return None, mask
+
+    points = np.column_stack((xs, ys))
+
+    # esquinas
+    top_left = points[np.argmin(points[:,0] + points[:,1])]
+    top_right = points[np.argmax(points[:,0] - points[:,1])]
+    bottom_left = points[np.argmin(points[:,0] - points[:,1])]
+    bottom_right = points[np.argmax(points[:,0] + points[:,1])]
+
+    pts1 = np.float32([
+        top_left,
+        top_right,
+        bottom_left,
+        bottom_right
+    ])
+
+    width = 300
+    height = 100
+
+    pts2 = np.float32([
+        [0,0],
+        [width,0],
+        [0,height],
+        [width,height]
+    ])
+
+    # transformación
+    M = cv2.getPerspectiveTransform(
+        pts1,
+        pts2
+    )
+
+    placa = cv2.warpPerspective(
+        img,
+        M,
+        (width, height)
+    )
+
+    return placa, mask
 
 # ============================================
 # GENERAR FILTROS OCR
@@ -405,10 +488,23 @@ def main():
             continue
 
         # ====================================
+        # CORREGIR PERSPECTIVA
+        # ====================================
+        
+        placa, mask = corregir_perspectiva(roi)
+        
+        # si falla usar ROI original
+        if placa is None:
+        
+            print("No se pudo corregir perspectiva")
+        
+            placa = roi
+        
+        # ====================================
         # OCR
         # ====================================
-
-        texto, filtros = leer_placa(roi)
+        
+        texto, filtros = leer_placa(placa)
 
         placa_valida = validar_placa(texto)
 
@@ -433,7 +529,19 @@ def main():
                 roi_name,
                 roi
             )
-
+            # ====================================
+            # GUARDAR PERSPECTIVA
+            # ====================================
+            
+            cv2.imwrite(
+                f"{SAVE_FOLDER}/{contador}_placa.jpg",
+                placa
+            )
+            
+            cv2.imwrite(
+                f"{SAVE_FOLDER}/{contador}_mask.jpg",
+                mask
+            )
             # ====================================
             # GUARDAR FILTROS
             # ====================================
