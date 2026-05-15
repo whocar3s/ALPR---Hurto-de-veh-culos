@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
 import pytesseract
-import pandas as pd
 import time
-import psutil
 import re
+import statistics
+import subprocess
 
 # ============================================
 # CONFIG
@@ -13,9 +13,9 @@ import re
 
 MODEL_PATH = "best_float32.tflite"
 
-IMAGE_PATH = "placa.jpg"
+IMAGE_PATH = "prueba.jpg"
 
-REPETICIONES = 30
+ITERACIONES = 30
 
 CONF_THRESHOLD = 0.25
 
@@ -65,7 +65,6 @@ def limpiar_y_corregir(texto):
     if not texto:
         return ""
 
-    # quitar ruido frontal
     if len(texto) >= 7:
 
         letras_iniciales = 0
@@ -73,46 +72,42 @@ def limpiar_y_corregir(texto):
         for char in texto:
 
             if char.isalpha():
-
                 letras_iniciales += 1
-
             else:
-
                 break
 
         if letras_iniciales >= 4:
-
             texto = texto[1:]
 
     texto = texto[:6]
 
-    lista = list(texto)
+    lista_texto = list(texto)
 
-    n = len(lista)
+    n = len(lista_texto)
 
     for i in range(n):
 
-        # letras
+        # POSICIONES LETRAS
         if i < 3:
 
-            if lista[i].isdigit():
+            if lista_texto[i].isdigit():
 
-                lista[i] = NUM_A_LETRA.get(
-                    lista[i],
-                    lista[i]
+                lista_texto[i] = NUM_A_LETRA.get(
+                    lista_texto[i],
+                    lista_texto[i]
                 )
 
-        # numeros
+        # POSICIONES NÚMEROS
         elif i == 3 or i == 4:
 
-            if lista[i].isalpha():
+            if lista_texto[i].isalpha():
 
-                lista[i] = LETRA_A_NUM.get(
-                    lista[i],
-                    lista[i]
+                lista_texto[i] = LETRA_A_NUM.get(
+                    lista_texto[i],
+                    lista_texto[i]
                 )
 
-    return "".join(lista)
+    return "".join(lista_texto)
 
 # ============================================
 # VALIDAR PLACA
@@ -140,27 +135,6 @@ def validar_placa(texto):
         return texto
 
     return None
-
-# ============================================
-# TEMPERATURA
-# ============================================
-
-def obtener_temperatura():
-
-    try:
-
-        with open(
-            "/sys/class/thermal/thermal_zone0/temp",
-            "r"
-        ) as f:
-
-            temp = float(f.read()) / 1000.0
-
-        return round(temp, 2)
-
-    except:
-
-        return -1
 
 # ============================================
 # PERSPECTIVA AMARILLA
@@ -213,7 +187,6 @@ def corregir_perspectiva_amarilla(img):
     ys, xs = np.where(mask == 255)
 
     if len(xs) == 0:
-
         return None
 
     points = np.column_stack((xs, ys))
@@ -246,15 +219,18 @@ def corregir_perspectiva_amarilla(img):
 
     ])
 
+    width = 300
+    height = 100
+
     pts2 = np.float32([
 
         [0,0],
 
-        [300,0],
+        [width,0],
 
-        [0,100],
+        [0,height],
 
-        [300,100]
+        [width,height]
 
     ])
 
@@ -266,7 +242,7 @@ def corregir_perspectiva_amarilla(img):
     return cv2.warpPerspective(
         img,
         M,
-        (300,100)
+        (width,height)
     )
 
 # ============================================
@@ -312,7 +288,6 @@ def corregir_perspectiva_blanca(img):
     )
 
     if not contornos:
-
         return None
 
     c_max = max(
@@ -439,463 +414,526 @@ def generar_filtros(img):
     return filtros
 
 # ============================================
-# MAIN
+# CARGAR MODELO
 # ============================================
 
-def main():
+interpreter = tflite.Interpreter(
+    model_path=MODEL_PATH
+)
 
-    # ====================================
-    # MODELO
-    # ====================================
+interpreter.allocate_tensors()
 
-    interpreter = tflite.Interpreter(
-        model_path=MODEL_PATH
-    )
+input_details = interpreter.get_input_details()
 
-    interpreter.allocate_tensors()
+output_details = interpreter.get_output_details()
 
-    input_details = interpreter.get_input_details()
+_, in_h, in_w, _ = input_details[0]['shape']
 
-    output_details = interpreter.get_output_details()
+print("\n================================")
+print("MODELO CARGADO")
+print("================================")
 
-    _, in_h, in_w, _ = input_details[0]['shape']
+# ============================================
+# MÉTRICAS
+# ============================================
 
-    # ====================================
-    # IMAGEN
-    # ====================================
+tiempos_yolo = []
+tiempos_ocr = []
+tiempos_total = []
+
+cpu_usos = []
+ram_usos = []
+temperaturas = []
+
+placas_detectadas_total = []
+
+# ============================================
+# LOOP 30 VECES
+# ============================================
+
+for i in range(ITERACIONES):
+
+    print("\n================================")
+    print(f"ITERACIÓN {i+1}")
+    print("================================")
+
+    inicio_total = time.time()
 
     img = cv2.imread(IMAGE_PATH)
 
     if img is None:
 
         print("No se pudo cargar imagen")
-
-        return
+        continue
 
     h_orig, w_orig = img.shape[:2]
 
-    resultados = []
-
     # ====================================
-    # LOOP 30 REPETICIONES
+    # PREPROCESS
     # ====================================
 
-    for intento in range(REPETICIONES):
+    rgb = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2RGB
+    )
 
-        print(f"\n=========== ITERACIÓN {intento+1} ===========")
+    input_data = cv2.resize(
+        rgb,
+        (in_w, in_h)
+    )
 
-        inicio_total = time.time()
+    input_data = input_data.astype(
+        np.float32
+    ) / 255.0
 
-        # ====================================
-        # PREPROCESS
-        # ====================================
+    input_data = np.expand_dims(
+        input_data,
+        axis=0
+    )
 
-        rgb = cv2.cvtColor(
-            img,
-            cv2.COLOR_BGR2RGB
+    # ====================================
+    # YOLO
+    # ====================================
+
+    inicio_yolo = time.time()
+
+    interpreter.set_tensor(
+        input_details[0]['index'],
+        input_data
+    )
+
+    interpreter.invoke()
+
+    output = np.squeeze(
+        interpreter.get_tensor(
+            output_details[0]['index']
         )
+    )
 
-        input_data = cv2.resize(
-            rgb,
-            (in_w, in_h)
-        )
+    fin_yolo = time.time()
 
-        input_data = input_data.astype(
-            np.float32
-        ) / 255.0
+    tiempo_yolo = (
+        fin_yolo - inicio_yolo
+    ) * 1000
 
-        input_data = np.expand_dims(
-            input_data,
-            axis=0
-        )
+    tiempos_yolo.append(
+        tiempo_yolo
+    )
 
-        # ====================================
-        # YOLO
-        # ====================================
+    if output.shape[0] < output.shape[1]:
 
-        inicio_yolo = time.time()
+        output = output.T
 
-        interpreter.set_tensor(
-            input_details[0]['index'],
-            input_data
-        )
+    detecciones = []
 
-        interpreter.invoke()
+    for row in output:
 
-        output = np.squeeze(
-            interpreter.get_tensor(
-                output_details[0]['index']
-            )
-        )
+        conf = row[4]
 
-        fin_yolo = time.time()
-
-        tiempo_yolo = (
-            fin_yolo - inicio_yolo
-        ) * 1000
-
-        # ====================================
-        # YOLO FORMAT
-        # ====================================
-
-        if output.shape[0] < output.shape[1]:
-
-            output = output.T
-
-        detecciones = []
-
-        max_conf = 0
-
-        for row in output:
-
-            conf = row[4]
-
-            if conf > max_conf:
-                max_conf = conf
-
-            if conf < CONF_THRESHOLD:
-                continue
-
-            cx, cy, w, h = row[:4]
-
-            if np.max(row[:4]) <= 1.01:
-
-                x1 = int((cx - w/2) * w_orig)
-                y1 = int((cy - h/2) * h_orig)
-                x2 = int((cx + w/2) * w_orig)
-                y2 = int((cy + h/2) * h_orig)
-
-            else:
-
-                x1 = int(
-                    (cx - w/2)
-                    * (w_orig / in_w)
-                )
-
-                y1 = int(
-                    (cy - h/2)
-                    * (h_orig / in_h)
-                )
-
-                x2 = int(
-                    (cx + w/2)
-                    * (w_orig / in_w)
-                )
-
-                y2 = int(
-                    (cy + h/2)
-                    * (h_orig / in_h)
-                )
-
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-
-            x2 = min(w_orig, x2)
-            y2 = min(h_orig, y2)
-
-            detecciones.append(
-                (
-                    [x1,y1,x2,y2],
-                    float(conf)
-                )
-            )
-
-        # ====================================
-        # SIN DETECCIÓN
-        # ====================================
-
-        if len(detecciones) == 0:
-
-            print("No se detectó placa")
-
+        if conf < CONF_THRESHOLD:
             continue
 
-        # ====================================
-        # MEJOR DETECCIÓN
-        # ====================================
+        cx, cy, w, h = row[:4]
 
-        best_box, best_conf = max(
-            detecciones,
-            key=lambda x: x[1]
-        )
+        if np.max(row[:4]) <= 1.01:
 
-        x1, y1, x2, y2 = best_box
-
-        roi = img[y1:y2, x1:x2]
-
-        if roi.size == 0:
-
-            print("ROI vacía")
-
-            continue
-
-        # ====================================
-        # COLOR
-        # ====================================
-
-        hsv = cv2.cvtColor(
-            roi,
-            cv2.COLOR_BGR2HSV
-        )
-
-        mask_yellow = cv2.inRange(
-
-            hsv,
-
-            np.array([15,40,40]),
-
-            np.array([40,255,255])
-
-        )
-
-        mask_white = cv2.inRange(
-
-            hsv,
-
-            np.array([0,0,120]),
-
-            np.array([180,60,255])
-
-        )
-
-        yellow_pixels = cv2.countNonZero(
-            mask_yellow
-        )
-
-        white_pixels = cv2.countNonZero(
-            mask_white
-        )
-
-        # ====================================
-        # OCR
-        # ====================================
-
-        inicio_ocr = time.time()
-
-        if yellow_pixels > white_pixels:
-
-            placa_img = corregir_perspectiva_amarilla(
-                roi
-            )
+            x1 = int((cx - w/2) * w_orig)
+            y1 = int((cy - h/2) * h_orig)
+            x2 = int((cx + w/2) * w_orig)
+            y2 = int((cy + h/2) * h_orig)
 
         else:
 
-            placa_img = corregir_perspectiva_blanca(
-                roi
+            x1 = int(
+                (cx - w/2)
+                * (w_orig / in_w)
             )
 
-        if placa_img is None:
+            y1 = int(
+                (cy - h/2)
+                * (h_orig / in_h)
+            )
 
-            print("No se pudo corregir perspectiva")
+            x2 = int(
+                (cx + w/2)
+                * (w_orig / in_w)
+            )
 
-            continue
+            y2 = int(
+                (cy + h/2)
+                * (h_orig / in_h)
+            )
 
-        filtros = generar_filtros(
-            placa_img
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+
+        x2 = min(w_orig, x2)
+        y2 = min(h_orig, y2)
+
+        detecciones.append(
+            (
+                [x1,y1,x2,y2],
+                float(conf)
+            )
         )
 
-        placas_detectadas = []
+    if len(detecciones) == 0:
 
-        for nombre_filtro, imagen_proc in filtros.items():
+        print("No detecciones")
+        continue
 
-            texto_raw = pytesseract.image_to_string(
+    # ====================================
+    # MEJOR DETECCIÓN
+    # ====================================
 
-                imagen_proc,
+    best_box, best_conf = max(
+        detecciones,
+        key=lambda x: x[1]
+    )
 
-                config=config
+    x1, y1, x2, y2 = best_box
 
-            )
+    roi = img[y1:y2, x1:x2]
 
-            texto_corregido = limpiar_y_corregir(
-                texto_raw
-            )
+    if roi.size == 0:
+        continue
 
-            if len(texto_corregido) == 6:
+    # ====================================
+    # OCR
+    # ====================================
 
-                placas_detectadas.append(
-                    texto_corregido
-                )
+    inicio_ocr = time.time()
 
-        fin_ocr = time.time()
+    hsv = cv2.cvtColor(
+        roi,
+        cv2.COLOR_BGR2HSV
+    )
 
-        tiempo_ocr = (
-            fin_ocr - inicio_ocr
-        ) * 1000
+    mask_yellow = cv2.inRange(
 
-        # ====================================
-        # PLACA MÁS REPETIDA
-        # ====================================
+        hsv,
 
-        placa_final = None
+        np.array([15,40,40]),
 
-        if len(placas_detectadas) > 0:
+        np.array([40,255,255])
 
-            conteo = {}
+    )
 
-            for placa in placas_detectadas:
+    mask_white = cv2.inRange(
 
-                if placa not in conteo:
+        hsv,
 
-                    conteo[placa] = 0
+        np.array([0,0,120]),
 
-                conteo[placa] += 1
+        np.array([180,60,255])
 
-            candidata = max(
-                conteo,
-                key=conteo.get
-            )
+    )
 
-            placa_validada = validar_placa(
-                candidata
-            )
+    yellow_pixels = cv2.countNonZero(
+        mask_yellow
+    )
 
-            if placa_validada is not None:
+    white_pixels = cv2.countNonZero(
+        mask_white
+    )
 
-                placa_final = placa_validada
+    if yellow_pixels > white_pixels:
 
-        # ====================================
-        # TIEMPO TOTAL
-        # ====================================
-
-        fin_total = time.time()
-
-        tiempo_total = (
-            fin_total - inicio_total
-        ) * 1000
-
-        fps = 1 / (
-            tiempo_total / 1000
+        placa_img = corregir_perspectiva_amarilla(
+            roi
         )
 
-        cpu = psutil.cpu_percent(interval=1)
+    else:
 
-        ram = psutil.virtual_memory().percent
+        placa_img = corregir_perspectiva_blanca(
+            roi
+        )
 
-        temp = obtener_temperatura()
+    if placa_img is None:
 
-        # ====================================
-        # RESULTADOS
-        # ====================================
+        print("No perspectiva")
+        continue
 
-        print("Placa:", placa_final)
-
-        print(f"Confianza: {best_conf:.3f}")
-
-        print(f"YOLO: {tiempo_yolo:.2f} ms")
-
-        print(f"OCR: {tiempo_ocr:.2f} ms")
-
-        print(f"TOTAL: {tiempo_total:.2f} ms")
-
-        print(f"FPS: {fps:.2f}")
-
-        print(f"CPU: {cpu:.2f}%")
-
-        print(f"RAM: {ram:.2f}%")
-
-        print(f"TEMP: {temp:.2f}°C")
-
-        resultados.append({
-
-            "iteracion": intento + 1,
-
-            "placa": placa_final,
-
-            "confianza": round(best_conf, 3),
-
-            "tiempo_yolo_ms": round(tiempo_yolo, 2),
-
-            "tiempo_ocr_ms": round(tiempo_ocr, 2),
-
-            "tiempo_total_ms": round(tiempo_total, 2),
-
-            "fps": round(fps, 2),
-
-            "cpu": round(cpu, 2),
-
-            "ram": round(ram, 2),
-
-            "temperatura": round(temp, 2)
-
-        })
-
-    # ====================================
-    # DATAFRAME
-    # ====================================
-
-    df = pd.DataFrame(resultados)
-
-    print("\n===============================")
-
-    print(df)
-
-    print("===============================\n")
-
-    # ====================================
-    # PROMEDIOS
-    # ====================================
-
-    print("PROMEDIOS\n")
-
-    print(
-        "YOLO:",
-        round(df["tiempo_yolo_ms"].mean(), 2),
-        "ms"
+    filtros = generar_filtros(
+        placa_img
     )
 
-    print(
-        "OCR:",
-        round(df["tiempo_ocr_ms"].mean(), 2),
-        "ms"
-    )
+    placas_detectadas = []
 
-    print(
-        "TOTAL:",
-        round(df["tiempo_total_ms"].mean(), 2),
-        "ms"
-    )
+    for nombre_filtro, imagen_proc in filtros.items():
 
-    print(
-        "FPS:",
-        round(df["fps"].mean(), 2)
-    )
+        texto_raw = pytesseract.image_to_string(
 
-    print(
-        "CPU:",
-        round(df["cpu"].mean(), 2),
-        "%"
-    )
+            imagen_proc,
 
-    print(
-        "RAM:",
-        round(df["ram"].mean(), 2),
-        "%"
-    )
+            config=config
 
-    print(
-        "TEMP:",
-        round(df["temperatura"].mean(), 2),
-        "°C"
+        )
+
+        texto_corregido = limpiar_y_corregir(
+            texto_raw
+        )
+
+        if len(texto_corregido) == 6:
+
+            placas_detectadas.append(
+                texto_corregido
+            )
+
+    fin_ocr = time.time()
+
+    tiempo_ocr = (
+        fin_ocr - inicio_ocr
+    ) * 1000
+
+    tiempos_ocr.append(
+        tiempo_ocr
     )
 
     # ====================================
-    # CSV
+    # PLACA MÁS REPETIDA
     # ====================================
 
-    df.to_csv(
-        "metricas_30_repeticiones.csv",
-        index=False
+    mejor_valido = None
+
+    if len(placas_detectadas) > 0:
+
+        conteo = {}
+
+        for placa in placas_detectadas:
+
+            if placa not in conteo:
+
+                conteo[placa] = 0
+
+            conteo[placa] += 1
+
+        candidata = max(
+            conteo,
+            key=conteo.get
+        )
+
+        placa_validada = validar_placa(
+            candidata
+        )
+
+        if placa_validada is not None:
+
+            mejor_valido = placa_validada
+
+    # ====================================
+    # TOTAL
+    # ====================================
+
+    fin_total = time.time()
+
+    tiempo_total = (
+        fin_total - inicio_total
+    ) * 1000
+
+    tiempos_total.append(
+        tiempo_total
+    )
+
+    # ====================================
+    # CPU
+    # ====================================
+
+    cpu = subprocess.getoutput(
+        "top -bn1 | grep 'Cpu(s)'"
+    )
+
+    try:
+
+        cpu_idle = float(
+            cpu.split()[7]
+            .replace(",", ".")
+        )
+
+        cpu_use = 100 - cpu_idle
+
+    except:
+
+        cpu_use = 0
+
+    cpu_usos.append(cpu_use)
+
+    # ====================================
+    # RAM
+    # ====================================
+
+    ram = subprocess.getoutput(
+        "free -m"
+    )
+
+    try:
+
+        line = ram.split("\n")[1]
+
+        usados = int(
+            line.split()[2]
+        )
+
+    except:
+
+        usados = 0
+
+    ram_usos.append(usados)
+
+    # ====================================
+    # TEMPERATURA
+    # ====================================
+
+    try:
+
+        temp = subprocess.getoutput(
+            "vcgencmd measure_temp"
+        )
+
+        temp = float(
+            temp.replace(
+                "temp=",
+                ""
+            ).replace(
+                "'C",
+                ""
+            )
+        )
+
+    except:
+
+        temp = 0
+
+    temperaturas.append(temp)
+
+    placas_detectadas_total.append(
+        mejor_valido
+    )
+
+    # ====================================
+    # RESULTADOS
+    # ====================================
+
+    print(
+        f"Placa detectada: {mejor_valido}"
     )
 
     print(
-        "\nCSV guardado:"
-        " metricas_30_repeticiones.csv"
+        f"YOLO: {tiempo_yolo:.2f} ms"
+    )
+
+    print(
+        f"OCR: {tiempo_ocr:.2f} ms"
+    )
+
+    print(
+        f"TOTAL: {tiempo_total:.2f} ms"
+    )
+
+    print(
+        f"CPU: {cpu_use:.2f}%"
+    )
+
+    print(
+        f"RAM: {usados} MB"
+    )
+
+    print(
+        f"TEMP: {temp:.2f}°C"
     )
 
 # ============================================
-# START
+# RESULTADOS FINALES
 # ============================================
 
-if __name__ == "__main__":
+print("\n================================")
+print("RESULTADOS FINALES")
+print("================================")
 
-    main()
+if len(tiempos_total) > 0:
+
+    print(
+        f"\nTotal pruebas: "
+        f"{len(tiempos_total)}"
+    )
+
+    print(
+        f"YOLO promedio: "
+        f"{statistics.mean(tiempos_yolo):.2f} ms"
+    )
+
+    print(
+        f"OCR promedio: "
+        f"{statistics.mean(tiempos_ocr):.2f} ms"
+    )
+
+    print(
+        f"TOTAL promedio: "
+        f"{statistics.mean(tiempos_total):.2f} ms"
+    )
+
+    print(
+        f"CPU promedio: "
+        f"{statistics.mean(cpu_usos):.2f}%"
+    )
+
+    print(
+        f"RAM promedio: "
+        f"{statistics.mean(ram_usos):.2f} MB"
+    )
+
+    print(
+        f"TEMP promedio: "
+        f"{statistics.mean(temperaturas):.2f}°C"
+    )
+
+    throughput = (
+        len(tiempos_total) /
+        (sum(tiempos_total) / 1000)
+    )
+
+    print(
+        f"Throughput: "
+        f"{throughput:.2f} img/s"
+    )
+
+    # ====================================
+    # PLACA MÁS REPETIDA
+    # ====================================
+
+    placas_validas = [
+
+        p for p in placas_detectadas_total
+
+        if p is not None
+
+    ]
+
+    if len(placas_validas) > 0:
+
+        conteo = {}
+
+        for placa in placas_validas:
+
+            if placa not in conteo:
+
+                conteo[placa] = 0
+
+            conteo[placa] += 1
+
+        placa_final = max(
+            conteo,
+            key=conteo.get
+        )
+
+        print(
+            f"\nPlaca más detectada: "
+            f"{placa_final}"
+        )
+
+        print(
+            f"Repeticiones: "
+            f"{conteo[placa_final]}"
+        )
+
+print("\n================================\n")
