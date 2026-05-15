@@ -9,10 +9,8 @@ import time
 import os
 import psutil
 
-from datetime import datetime
-
 # ============================================
-# CONFIGURACIÓN
+# CONFIG
 # ============================================
 
 MODEL_PATH = "best_float32.tflite"
@@ -23,7 +21,7 @@ API_URL = "https://apizpp.onrender.com"
 
 CONF_THRESHOLD = 0.25
 
-CAPTURE_INTERVAL = 20
+CAPTURE_INTERVAL = 30
 
 CAMERA_SOURCE = 0
 
@@ -36,7 +34,7 @@ SAVE_FOLDER = "placas_detectadas"
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
 # ============================================
-# CONFIG OCR
+# OCR CONFIG
 # ============================================
 
 config = (
@@ -45,27 +43,137 @@ config = (
 )
 
 # ============================================
+# MAPEOS OCR
+# ============================================
+
+NUM_A_LETRA = {
+    "0": "O",
+    "1": "I",
+    "2": "Z",
+    "4": "A",
+    "5": "S",
+    "8": "B"
+}
+
+LETRA_A_NUM = {
+    "O": "0",
+    "I": "1",
+    "J": "1",
+    "Z": "2",
+    "A": "4",
+    "S": "5",
+    "B": "8",
+    "G": "6"
+}
+
+# ============================================
 # PLACAS YA REPORTADAS
 # ============================================
 
 placas_reportadas = set()
 
 # ============================================
-# LIMPIAR TEXTO
+# LIMPIAR Y CORREGIR OCR
 # ============================================
 
-def limpiar(texto):
+def limpiar_y_corregir(texto):
 
-    texto = texto.strip()
+    texto = texto.strip().upper()
 
-    texto = texto.replace(" ", "")
-    texto = texto.replace("\n", "")
-    texto = texto.replace("\x0c", "")
+    texto = "".join(texto.split())
 
-    return texto
+    if not texto:
+        return ""
+
+    # ====================================
+    # FILTRO RUIDO FRONTAL
+    # ====================================
+
+    if len(texto) >= 7:
+
+        letras_iniciales = 0
+
+        for char in texto:
+
+            if char.isalpha():
+
+                letras_iniciales += 1
+
+            else:
+
+                break
+
+        if letras_iniciales >= 4:
+
+            texto = texto[1:]
+
+    # ====================================
+    # RECORTE
+    # ====================================
+
+    texto = texto[:6]
+
+    lista_texto = list(texto)
+
+    n = len(lista_texto)
+
+    # ====================================
+    # MAPEO POSICIONAL
+    # ====================================
+
+    for i in range(n):
+
+        # LETRAS
+        if i < 3:
+
+            if lista_texto[i].isdigit():
+
+                lista_texto[i] = NUM_A_LETRA.get(
+                    lista_texto[i],
+                    lista_texto[i]
+                )
+
+        # NÚMEROS
+        elif i == 3 or i == 4:
+
+            if lista_texto[i].isalpha():
+
+                lista_texto[i] = LETRA_A_NUM.get(
+                    lista_texto[i],
+                    lista_texto[i]
+                )
+
+    return "".join(lista_texto)
 
 # ============================================
-# TEMPERATURA CPU
+# VALIDAR PLACA
+# ============================================
+
+def validar_placa(texto):
+
+    texto = re.sub(
+        r'[^A-Z0-9]',
+        '',
+        texto.upper()
+    )
+
+    if len(texto) != 6:
+        return None
+
+    patron_carro = r'^[A-Z]{3}[0-9]{3}$'
+
+    patron_moto = r'^[A-Z]{3}[0-9]{2}[A-Z]$'
+
+    if re.match(patron_carro, texto):
+        return texto
+
+    if re.match(patron_moto, texto):
+        return texto
+
+    return None
+
+# ============================================
+# MÉTRICAS
 # ============================================
 
 def obtener_temperatura():
@@ -85,140 +193,15 @@ def obtener_temperatura():
 
         return -1
 
-# ============================================
-# MÉTRICAS SISTEMA
-# ============================================
-
 def obtener_metricas():
 
-    cpu = psutil.cpu_percent(interval=None)
+    cpu = psutil.cpu_percent(interval=1)
 
     ram = psutil.virtual_memory().percent
 
     temp = obtener_temperatura()
 
     return cpu, ram, temp
-
-# ============================================
-# CORREGIR FORMATO
-# ============================================
-
-def corregir_formato(texto, es_moto=False):
-
-    texto = re.sub(
-        r'[^A-Z0-9]',
-        '',
-        texto.upper()
-    )
-
-    texto = list(texto)
-
-    if len(texto) < 6:
-        return "".join(texto)
-
-    # PRIMEROS 3 -> LETRAS
-    for i in range(3):
-
-        if texto[i] == "0":
-            texto[i] = "O"
-
-        elif texto[i] == "1":
-            texto[i] = "I"
-
-        elif texto[i] == "2":
-            texto[i] = "Z"
-
-        elif texto[i] == "5":
-            texto[i] = "S"
-
-        elif texto[i] == "8":
-            texto[i] = "B"
-
-    # POSICIONES 4 Y 5 -> NÚMEROS
-    for i in [3,4]:
-
-        if texto[i] == "O":
-            texto[i] = "0"
-
-        elif texto[i] == "I":
-            texto[i] = "1"
-
-        elif texto[i] == "Z":
-            texto[i] = "2"
-
-        elif texto[i] == "S":
-            texto[i] = "5"
-
-        elif texto[i] == "B":
-            texto[i] = "8"
-
-    # ÚLTIMO CARÁCTER
-    if not es_moto:
-
-        if texto[5] == "O":
-            texto[5] = "0"
-
-        elif texto[5] == "I":
-            texto[5] = "1"
-
-        elif texto[5] == "Z":
-            texto[5] = "2"
-
-        elif texto[5] == "S":
-            texto[5] = "5"
-
-        elif texto[5] == "B":
-            texto[5] = "8"
-
-    else:
-
-        if texto[5] == "0":
-            texto[5] = "O"
-
-        elif texto[5] == "1":
-            texto[5] = "I"
-
-        elif texto[5] == "2":
-            texto[5] = "Z"
-
-        elif texto[5] == "5":
-            texto[5] = "S"
-
-        elif texto[5] == "8":
-            texto[5] = "B"
-
-    return "".join(texto)
-
-# ============================================
-# VALIDAR PLACA
-# ============================================
-
-def validar_placa(texto, es_moto=False):
-
-    texto = re.sub(
-        r'[^A-Z0-9]',
-        '',
-        texto.upper()
-    )
-
-    if len(texto) != 6:
-        return None
-
-    patron_carro = r'^[A-Z]{3}[0-9]{3}$'
-
-    patron_moto  = r'^[A-Z]{3}[0-9]{2}[A-I]$'
-
-    if es_moto:
-
-        if re.match(patron_moto, texto):
-            return texto
-
-    else:
-
-        if re.match(patron_carro, texto):
-            return texto
-
-    return None
 
 # ============================================
 # CARGAR JSON
@@ -285,10 +268,10 @@ def verificar_api(placa):
         return None, -1
 
 # ============================================
-# CORREGIR PERSPECTIVA
+# PERSPECTIVA AMARILLA
 # ============================================
 
-def corregir_perspectiva(img):
+def corregir_perspectiva_amarilla(img):
 
     hsv = cv2.cvtColor(
         img,
@@ -338,32 +321,22 @@ def corregir_perspectiva(img):
 
         return None
 
-    points = np.column_stack(
-        (xs, ys)
-    )
+    points = np.column_stack((xs, ys))
 
     top_left = points[
-        np.argmin(
-            points[:,0] + points[:,1]
-        )
+        np.argmin(points[:,0] + points[:,1])
     ]
 
     top_right = points[
-        np.argmax(
-            points[:,0] - points[:,1]
-        )
+        np.argmax(points[:,0] - points[:,1])
     ]
 
     bottom_left = points[
-        np.argmin(
-            points[:,0] - points[:,1]
-        )
+        np.argmin(points[:,0] - points[:,1])
     ]
 
     bottom_right = points[
-        np.argmax(
-            points[:,0] + points[:,1]
-        )
+        np.argmax(points[:,0] + points[:,1])
     ]
 
     pts1 = np.float32([
@@ -399,17 +372,105 @@ def corregir_perspectiva(img):
         pts2
     )
 
-    dst = cv2.warpPerspective(
-
+    return cv2.warpPerspective(
         img,
-
         M,
-
         (width,height)
+    )
+
+# ============================================
+# PERSPECTIVA BLANCA
+# ============================================
+
+def corregir_perspectiva_blanca(img):
+
+    hsv = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2HSV
+    )
+
+    mask_w = cv2.inRange(
+
+        hsv,
+
+        np.array([0,0,120]),
+
+        np.array([180,60,255])
 
     )
 
-    return dst
+    kernel = np.ones(
+        (5,5),
+        np.uint8
+    )
+
+    closed = cv2.morphologyEx(
+        mask_w,
+        cv2.MORPH_CLOSE,
+        kernel
+    )
+
+    contornos, _ = cv2.findContours(
+
+        closed,
+
+        cv2.RETR_EXTERNAL,
+
+        cv2.CHAIN_APPROX_SIMPLE
+
+    )
+
+    if not contornos:
+
+        return None
+
+    c_max = max(
+        contornos,
+        key=cv2.contourArea
+    )
+
+    rect = cv2.minAreaRect(c_max)
+
+    box = cv2.boxPoints(rect)
+
+    box = np.intp(box)
+
+    s = box.sum(axis=1)
+
+    diff = np.diff(box, axis=1)
+
+    pts1 = np.zeros((4,2), dtype="float32")
+
+    pts1[0] = box[np.argmin(s)]
+
+    pts1[1] = box[np.argmin(diff)]
+
+    pts1[2] = box[np.argmax(diff)]
+
+    pts1[3] = box[np.argmax(s)]
+
+    pts2 = np.float32([
+
+        [0,0],
+
+        [300,0],
+
+        [0,100],
+
+        [300,100]
+
+    ])
+
+    M = cv2.getPerspectiveTransform(
+        pts1,
+        pts2
+    )
+
+    return cv2.warpPerspective(
+        img,
+        M,
+        (300,100)
+    )
 
 # ============================================
 # FILTROS OCR
@@ -428,6 +489,36 @@ def generar_filtros(img):
 
     filtros["gray"] = gray
 
+    res_lanczos = cv2.resize(
+
+        gray,
+
+        None,
+
+        fx=2,
+
+        fy=2,
+
+        interpolation=cv2.INTER_LANCZOS4
+
+    )
+
+    filtros["res_lanczos"] = res_lanczos
+
+    _, otsu = cv2.threshold(
+
+        res_lanczos,
+
+        0,
+
+        255,
+
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU
+
+    )
+
+    filtros["otsu"] = otsu
+
     resize = cv2.resize(
         gray,
         None,
@@ -439,7 +530,7 @@ def generar_filtros(img):
 
     blur = cv2.GaussianBlur(
         resize,
-        (5,5),
+        (3,3),
         0
     )
 
@@ -453,23 +544,6 @@ def generar_filtros(img):
     )
 
     filtros["threshold"] = thresh
-
-    adapt = cv2.adaptiveThreshold(
-        resize,
-        255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        11,
-        2
-    )
-
-    filtros["adaptive"] = adapt
-
-    invert = cv2.bitwise_not(
-        adapt
-    )
-
-    filtros["invert"] = invert
 
     return filtros
 
@@ -497,41 +571,6 @@ def main():
 
     _, in_h, in_w, _ = input_details[0]['shape']
 
-    print("===================================")
-    print("MODELO CARGADO")
-    print("Input shape:", input_details[0]['shape'])
-    print("===================================")
-
-    # ====================================
-    # CÁMARA
-    # ====================================
-
-    cap = cv2.VideoCapture(
-        CAMERA_SOURCE
-    )
-
-    if not cap.isOpened():
-
-        print("❌ No se pudo abrir cámara")
-        return
-
-    cap.set(
-        cv2.CAP_PROP_FRAME_WIDTH,
-        640
-    )
-
-    cap.set(
-        cv2.CAP_PROP_FRAME_HEIGHT,
-        480
-    )
-
-    cap.set(
-        cv2.CAP_PROP_BUFFERSIZE,
-        1
-    )
-
-    print("📷 Cámara iniciada")
-
     # ====================================
     # LOOP
     # ====================================
@@ -541,22 +580,28 @@ def main():
         inicio_total = time.time()
 
         # ====================================
-        # CAPTURA
+        # ABRIR CÁMARA
         # ====================================
 
-        inicio_captura = time.time()
+        cap = cv2.VideoCapture(
+            CAMERA_SOURCE
+        )
+
+        time.sleep(2)
+
+        for _ in range(5):
+            cap.read()
 
         ret, frame = cap.read()
 
-        fin_captura = time.time()
-
-        tiempo_captura = (
-            fin_captura - inicio_captura
-        ) * 1000
+        cap.release()
 
         if not ret:
 
-            print("⚠️ Frame perdido")
+            print("No se pudo capturar frame")
+
+            time.sleep(CAPTURE_INTERVAL)
+
             continue
 
         h_orig, w_orig = frame.shape[:2]
@@ -614,33 +659,20 @@ def main():
         # ====================================
 
         if output.shape[0] < output.shape[1]:
+
             output = output.T
 
         detecciones = []
 
-        max_conf = 0
-
-        # ====================================
-        # LEER DETECCIONES
-        # ====================================
-
         for row in output:
 
-            # IMPORTANTE
-            # ESTE ERA EL PROCESAMIENTO
-            # QUE FUNCIONABA
-
             conf = row[4]
-
-            if conf > max_conf:
-                max_conf = conf
 
             if conf < CONF_THRESHOLD:
                 continue
 
             cx, cy, w, h = row[:4]
 
-            # NORMALIZADO
             if np.max(row[:4]) <= 1.01:
 
                 x1 = int((cx - w/2) * w_orig)
@@ -648,7 +680,6 @@ def main():
                 x2 = int((cx + w/2) * w_orig)
                 y2 = int((cy + h/2) * h_orig)
 
-            # ESCALADO
             else:
 
                 x1 = int(
@@ -679,14 +710,10 @@ def main():
 
             detecciones.append(
                 (
-                    [x1, y1, x2, y2],
+                    [x1,y1,x2,y2],
                     float(conf)
                 )
             )
-
-        print(
-            f"Max confidence: {max_conf:.3f}"
-        )
 
         # ====================================
         # SIN DETECCIONES
@@ -715,53 +742,86 @@ def main():
 
         if roi.size == 0:
 
-            print("ROI vacía")
-
             time.sleep(CAPTURE_INTERVAL)
 
             continue
 
         # ====================================
-        # CLASIFICAR VEHÍCULO
+        # MÁSCARAS
         # ====================================
 
-        ancho = x2 - x1
-
-        largo = y2 - y1
-
-        es_moto = not (
-            ancho > (largo * 2)
+        hsv = cv2.cvtColor(
+            roi,
+            cv2.COLOR_BGR2HSV
         )
+
+        mask_yellow = cv2.inRange(
+
+            hsv,
+
+            np.array([15,40,40]),
+
+            np.array([40,255,255])
+
+        )
+
+        mask_white = cv2.inRange(
+
+            hsv,
+
+            np.array([0,0,120]),
+
+            np.array([180,60,255])
+
+        )
+
+        yellow_pixels = cv2.countNonZero(
+            mask_yellow
+        )
+
+        white_pixels = cv2.countNonZero(
+            mask_white
+        )
+
+        # ====================================
+        # PERSPECTIVA
+        # ====================================
+
+        inicio_ocr = time.time()
+
+        if yellow_pixels > white_pixels:
+
+            placa_img = corregir_perspectiva_amarilla(
+                roi
+            )
+
+        else:
+
+            placa_img = corregir_perspectiva_blanca(
+                roi
+            )
+
+        if placa_img is None:
+
+            print("No se pudo corregir perspectiva")
+
+            time.sleep(CAPTURE_INTERVAL)
+
+            continue
 
         # ====================================
         # OCR
         # ====================================
 
-        inicio_ocr = time.time()
-
-        placa = corregir_perspectiva(
-            roi
-        )
-
-        if placa is None:
-
-            print(
-                "No se pudo corregir perspectiva"
-            )
-
-            time.sleep(CAPTURE_INTERVAL)
-
-            continue
-
         filtros = generar_filtros(
-            placa
+            placa_img
         )
 
         placas_detectadas = []
 
         for nombre_filtro, imagen_proc in filtros.items():
 
-            texto = pytesseract.image_to_string(
+            texto_raw = pytesseract.image_to_string(
 
                 imagen_proc,
 
@@ -769,21 +829,14 @@ def main():
 
             )
 
-            texto = limpiar(texto)
-
-            texto = corregir_formato(
-                texto,
-                es_moto
+            texto_corregido = limpiar_y_corregir(
+                texto_raw
             )
 
-            print(
-                f"{nombre_filtro}: {texto}"
-            )
-
-            if len(texto) == 6:
+            if len(texto_corregido) == 6:
 
                 placas_detectadas.append(
-                    texto
+                    texto_corregido
                 )
 
         fin_ocr = time.time()
@@ -802,17 +855,13 @@ def main():
 
             conteo = {}
 
-            for placa_detectada in placas_detectadas:
+            for placa in placas_detectadas:
 
-                if placa_detectada not in conteo:
+                if placa not in conteo:
 
-                    conteo[
-                        placa_detectada
-                    ] = 0
+                    conteo[placa] = 0
 
-                conteo[
-                    placa_detectada
-                ] += 1
+                conteo[placa] += 1
 
             candidata = max(
                 conteo,
@@ -820,8 +869,7 @@ def main():
             )
 
             placa_validada = validar_placa(
-                candidata,
-                es_moto
+                candidata
             )
 
             if placa_validada is not None:
@@ -848,15 +896,11 @@ def main():
 
         print("PLACA:", mejor_valido)
 
-        print(f"Confianza YOLO: {best_conf:.3f}")
-
-        print(f"Captura: {tiempo_captura:.2f} ms")
-
         print(f"YOLO: {tiempo_yolo:.2f} ms")
 
         print(f"OCR: {tiempo_ocr:.2f} ms")
 
-        print(f"Pipeline total: {tiempo_total:.2f} ms")
+        print(f"TOTAL: {tiempo_total:.2f} ms")
 
         print(f"FPS: {fps:.2f}")
 
@@ -864,7 +908,7 @@ def main():
 
         print(f"RAM: {ram:.2f}%")
 
-        print(f"Temperatura: {temp:.2f} °C")
+        print(f"TEMP: {temp:.2f}°C")
 
         # ====================================
         # VALIDACIÓN LOCAL
@@ -872,20 +916,18 @@ def main():
 
         if mejor_valido:
 
-            # YA REPORTADA
             if mejor_valido in placas_reportadas:
 
                 print(
-                    "Placa ya reportada anteriormente"
+                    "Placa ya reportada"
                 )
 
             else:
 
-                # ROBADA
                 if mejor_valido in placas_robadas:
 
                     print(
-                        "⚠ VEHÍCULO ROBADO"
+                        "VEHÍCULO ROBADO"
                     )
 
                     respuesta, tiempo_api = verificar_api(
@@ -895,8 +937,6 @@ def main():
                     print(
                         f"API: {tiempo_api:.2f} ms"
                     )
-
-                    print("Respuesta API:")
 
                     print(respuesta)
 
@@ -910,19 +950,9 @@ def main():
                         "Vehículo no reportado"
                     )
 
-        else:
-
-            print(
-                "No se obtuvo placa válida"
-            )
-
-        print("========================\n")
-
-        # ====================================
-        # GUARDAR SOLO 1 RECORTE
-        # ====================================
-
-        if mejor_valido:
+            # ====================================
+            # GUARDAR RECORTE
+            # ====================================
 
             nombre = (
                 f"{SAVE_FOLDER}/"
@@ -933,24 +963,22 @@ def main():
 
                 cv2.imwrite(
                     nombre,
-                    roi
+                    placa_img
                 )
 
-                print(
-                    f"Recorte guardado: {nombre}"
-                )
+        else:
+
+            print(
+                "No se obtuvo placa válida"
+            )
+
+        print("========================\n")
 
         # ====================================
         # ESPERA
         # ====================================
 
         time.sleep(CAPTURE_INTERVAL)
-
-    # ====================================
-    # RELEASE
-    # ====================================
-
-    cap.release()
 
 # ============================================
 # START
