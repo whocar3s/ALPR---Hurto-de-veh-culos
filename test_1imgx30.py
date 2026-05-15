@@ -6,6 +6,7 @@ import time
 import re
 import statistics
 import subprocess
+import requests
 
 # ============================================
 # CONFIG
@@ -18,6 +19,8 @@ IMAGE_PATH = "prueba.jpg"
 ITERACIONES = 30
 
 CONF_THRESHOLD = 0.25
+
+API_URL = "https://apizpp.onrender.com/placas/verificar"
 
 # ============================================
 # OCR CONFIG
@@ -87,7 +90,6 @@ def limpiar_y_corregir(texto):
 
     for i in range(n):
 
-        # POSICIONES LETRAS
         if i < 3:
 
             if lista_texto[i].isdigit():
@@ -97,7 +99,6 @@ def limpiar_y_corregir(texto):
                     lista_texto[i]
                 )
 
-        # POSICIONES NÚMEROS
         elif i == 3 or i == 4:
 
             if lista_texto[i].isalpha():
@@ -135,6 +136,58 @@ def validar_placa(texto):
         return texto
 
     return None
+
+# ============================================
+# API
+# ============================================
+
+def verificar_api(placa):
+
+    try:
+
+        data = {
+
+            "placa": placa,
+
+            "ubicacion": "Prueba Raspberry",
+
+            "tipo_evento": "prueba_rendimiento"
+
+        }
+
+        inicio_api = time.time()
+
+        response = requests.post(
+
+            API_URL,
+
+            json=data,
+
+            timeout=10
+
+        )
+
+        fin_api = time.time()
+
+        tiempo_api = (
+            fin_api - inicio_api
+        ) * 1000
+
+        return (
+            response.json(),
+            tiempo_api,
+            response.status_code
+        )
+
+    except Exception as e:
+
+        print("Error API:", e)
+
+        return (
+            None,
+            None,
+            None
+        )
 
 # ============================================
 # PERSPECTIVA AMARILLA
@@ -219,18 +272,15 @@ def corregir_perspectiva_amarilla(img):
 
     ])
 
-    width = 300
-    height = 100
-
     pts2 = np.float32([
 
         [0,0],
 
-        [width,0],
+        [300,0],
 
-        [0,height],
+        [0,100],
 
-        [width,height]
+        [300,100]
 
     ])
 
@@ -242,7 +292,7 @@ def corregir_perspectiva_amarilla(img):
     return cv2.warpPerspective(
         img,
         M,
-        (width,height)
+        (300,100)
     )
 
 # ============================================
@@ -429,10 +479,6 @@ output_details = interpreter.get_output_details()
 
 _, in_h, in_w, _ = input_details[0]['shape']
 
-print("\n================================")
-print("MODELO CARGADO")
-print("================================")
-
 # ============================================
 # MÉTRICAS
 # ============================================
@@ -440,15 +486,17 @@ print("================================")
 tiempos_yolo = []
 tiempos_ocr = []
 tiempos_total = []
+tiempos_api = []
 
 cpu_usos = []
 ram_usos = []
 temperaturas = []
 
-placas_detectadas_total = []
+api_ok = 0
+api_fail = 0
 
 # ============================================
-# LOOP 30 VECES
+# LOOP
 # ============================================
 
 for i in range(ITERACIONES):
@@ -463,7 +511,7 @@ for i in range(ITERACIONES):
 
     if img is None:
 
-        print("No se pudo cargar imagen")
+        print("Error imagen")
         continue
 
     h_orig, w_orig = img.shape[:2]
@@ -583,7 +631,7 @@ for i in range(ITERACIONES):
         continue
 
     # ====================================
-    # MEJOR DETECCIÓN
+    # ROI
     # ====================================
 
     best_box, best_conf = max(
@@ -660,7 +708,7 @@ for i in range(ITERACIONES):
 
     placas_detectadas = []
 
-    for nombre_filtro, imagen_proc in filtros.items():
+    for _, imagen_proc in filtros.items():
 
         texto_raw = pytesseract.image_to_string(
 
@@ -691,7 +739,7 @@ for i in range(ITERACIONES):
     )
 
     # ====================================
-    # PLACA MÁS REPETIDA
+    # PLACA FINAL
     # ====================================
 
     mejor_valido = None
@@ -703,7 +751,6 @@ for i in range(ITERACIONES):
         for placa in placas_detectadas:
 
             if placa not in conteo:
-
                 conteo[placa] = 0
 
             conteo[placa] += 1
@@ -720,6 +767,38 @@ for i in range(ITERACIONES):
         if placa_validada is not None:
 
             mejor_valido = placa_validada
+
+    # ====================================
+    # API
+    # ====================================
+
+    if mejor_valido is not None:
+
+        respuesta, tiempo_api, status = verificar_api(
+            mejor_valido
+        )
+
+        if tiempo_api is not None:
+
+            tiempos_api.append(
+                tiempo_api
+            )
+
+        if status == 200:
+
+            api_ok += 1
+
+        else:
+
+            api_fail += 1
+
+        print(
+            f"API: {tiempo_api:.2f} ms"
+        )
+
+        print(
+            f"Status: {status}"
+        )
 
     # ====================================
     # TOTAL
@@ -806,16 +885,12 @@ for i in range(ITERACIONES):
 
     temperaturas.append(temp)
 
-    placas_detectadas_total.append(
-        mejor_valido
-    )
-
     # ====================================
     # RESULTADOS
     # ====================================
 
     print(
-        f"Placa detectada: {mejor_valido}"
+        f"Placa: {mejor_valido}"
     )
 
     print(
@@ -868,6 +943,11 @@ if len(tiempos_total) > 0:
     )
 
     print(
+        f"API promedio: "
+        f"{statistics.mean(tiempos_api):.2f} ms"
+    )
+
+    print(
         f"TOTAL promedio: "
         f"{statistics.mean(tiempos_total):.2f} ms"
     )
@@ -897,43 +977,14 @@ if len(tiempos_total) > 0:
         f"{throughput:.2f} img/s"
     )
 
-    # ====================================
-    # PLACA MÁS REPETIDA
-    # ====================================
+    print(
+        f"API exitosas: "
+        f"{api_ok}"
+    )
 
-    placas_validas = [
-
-        p for p in placas_detectadas_total
-
-        if p is not None
-
-    ]
-
-    if len(placas_validas) > 0:
-
-        conteo = {}
-
-        for placa in placas_validas:
-
-            if placa not in conteo:
-
-                conteo[placa] = 0
-
-            conteo[placa] += 1
-
-        placa_final = max(
-            conteo,
-            key=conteo.get
-        )
-
-        print(
-            f"\nPlaca más detectada: "
-            f"{placa_final}"
-        )
-
-        print(
-            f"Repeticiones: "
-            f"{conteo[placa_final]}"
-        )
+    print(
+        f"API fallidas: "
+        f"{api_fail}"
+    )
 
 print("\n================================\n")
