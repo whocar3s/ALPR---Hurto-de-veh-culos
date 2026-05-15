@@ -23,11 +23,17 @@ API_URL = "https://apizpp.onrender.com"
 
 CONF_THRESHOLD = 0.25
 
-CAPTURE_INTERVAL = 20   # segundos
+CAPTURE_INTERVAL = 20
 
-OUTPUT_DIR = "capturas"
+CAMERA_SOURCE = 0
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+SAVE_FOLDER = "placas_detectadas"
+
+# ============================================
+# CREAR CARPETA
+# ============================================
+
+os.makedirs(SAVE_FOLDER, exist_ok=True)
 
 # ============================================
 # CONFIG OCR
@@ -110,6 +116,7 @@ def corregir_formato(texto, es_moto=False):
     if len(texto) < 6:
         return "".join(texto)
 
+    # PRIMEROS 3 -> LETRAS
     for i in range(3):
 
         if texto[i] == "0":
@@ -127,6 +134,7 @@ def corregir_formato(texto, es_moto=False):
         elif texto[i] == "8":
             texto[i] = "B"
 
+    # POSICIONES 4 Y 5 -> NÚMEROS
     for i in [3,4]:
 
         if texto[i] == "O":
@@ -144,6 +152,7 @@ def corregir_formato(texto, es_moto=False):
         elif texto[i] == "B":
             texto[i] = "8"
 
+    # ÚLTIMO CARÁCTER
     if not es_moto:
 
         if texto[5] == "O":
@@ -276,7 +285,7 @@ def verificar_api(placa):
         return None, -1
 
 # ============================================
-# PERSPECTIVA
+# CORREGIR PERSPECTIVA
 # ============================================
 
 def corregir_perspectiva(img):
@@ -287,11 +296,15 @@ def corregir_perspectiva(img):
     )
 
     lower_yellow = np.array([
-        15,40,40
+        15,
+        40,
+        40
     ])
 
     upper_yellow = np.array([
-        40,255,255
+        40,
+        255,
+        255
     ])
 
     mask = cv2.inRange(
@@ -322,24 +335,35 @@ def corregir_perspectiva(img):
     ys, xs = np.where(mask == 255)
 
     if len(xs) == 0:
+
         return None
 
-    points = np.column_stack((xs, ys))
+    points = np.column_stack(
+        (xs, ys)
+    )
 
     top_left = points[
-        np.argmin(points[:,0] + points[:,1])
+        np.argmin(
+            points[:,0] + points[:,1]
+        )
     ]
 
     top_right = points[
-        np.argmax(points[:,0] - points[:,1])
+        np.argmax(
+            points[:,0] - points[:,1]
+        )
     ]
 
     bottom_left = points[
-        np.argmin(points[:,0] - points[:,1])
+        np.argmin(
+            points[:,0] - points[:,1]
+        )
     ]
 
     bottom_right = points[
-        np.argmax(points[:,0] + points[:,1])
+        np.argmax(
+            points[:,0] + points[:,1]
+        )
     ]
 
     pts1 = np.float32([
@@ -376,15 +400,19 @@ def corregir_perspectiva(img):
     )
 
     dst = cv2.warpPerspective(
+
         img,
+
         M,
+
         (width,height)
+
     )
 
     return dst
 
 # ============================================
-# FILTROS
+# FILTROS OCR
 # ============================================
 
 def generar_filtros(img):
@@ -437,7 +465,9 @@ def generar_filtros(img):
 
     filtros["adaptive"] = adapt
 
-    invert = cv2.bitwise_not(adapt)
+    invert = cv2.bitwise_not(
+        adapt
+    )
 
     filtros["invert"] = invert
 
@@ -451,6 +481,10 @@ def main():
 
     placas_robadas = cargar_placas()
 
+    # ====================================
+    # MODELO
+    # ====================================
+
     interpreter = tflite.Interpreter(
         model_path=MODEL_PATH
     )
@@ -463,31 +497,56 @@ def main():
 
     _, in_h, in_w, _ = input_details[0]['shape']
 
+    print("===================================")
+    print("MODELO CARGADO")
+    print("Input shape:", input_details[0]['shape'])
+    print("===================================")
+
     # ====================================
     # CÁMARA
     # ====================================
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(
+        CAMERA_SOURCE
+    )
 
     if not cap.isOpened():
 
-        print("No se pudo abrir cámara")
-
+        print("❌ No se pudo abrir cámara")
         return
 
-    print("Sistema iniciado")
+    cap.set(
+        cv2.CAP_PROP_FRAME_WIDTH,
+        640
+    )
+
+    cap.set(
+        cv2.CAP_PROP_FRAME_HEIGHT,
+        480
+    )
+
+    cap.set(
+        cv2.CAP_PROP_BUFFERSIZE,
+        1
+    )
+
+    print("📷 Cámara iniciada")
+
+    # ====================================
+    # LOOP
+    # ====================================
 
     while True:
 
         inicio_total = time.time()
 
         # ====================================
-        # CAPTURA FRAME
+        # CAPTURA
         # ====================================
 
         inicio_captura = time.time()
 
-        ret, img = cap.read()
+        ret, frame = cap.read()
 
         fin_captura = time.time()
 
@@ -497,18 +556,17 @@ def main():
 
         if not ret:
 
-            print("Error leyendo cámara")
-
+            print("⚠️ Frame perdido")
             continue
 
-        h_orig, w_orig = img.shape[:2]
+        h_orig, w_orig = frame.shape[:2]
 
         # ====================================
         # PREPROCESS
         # ====================================
 
         rgb = cv2.cvtColor(
-            img,
+            frame,
             cv2.COLOR_BGR2RGB
         )
 
@@ -540,11 +598,9 @@ def main():
         interpreter.invoke()
 
         output = np.squeeze(
-
             interpreter.get_tensor(
                 output_details[0]['index']
             )
-
         )
 
         fin_yolo = time.time()
@@ -553,65 +609,84 @@ def main():
             fin_yolo - inicio_yolo
         ) * 1000
 
-        if output.shape[0] < output.shape[1]:
+        # ====================================
+        # FORMATO YOLOv8
+        # ====================================
 
+        if output.shape[0] < output.shape[1]:
             output = output.T
 
         detecciones = []
 
+        max_conf = 0
+
+        # ====================================
+        # LEER DETECCIONES
+        # ====================================
+
         for row in output:
 
-            probabilidades = row[4:]
+            # IMPORTANTE
+            # ESTE ERA EL PROCESAMIENTO
+            # QUE FUNCIONABA
 
-            conf = np.max(probabilidades)
+            conf = row[4]
 
-            if conf > CONF_THRESHOLD:
+            if conf > max_conf:
+                max_conf = conf
 
-                cx, cy, w, h = row[:4]
+            if conf < CONF_THRESHOLD:
+                continue
 
-                if np.max(row[:4]) <= 1.01:
+            cx, cy, w, h = row[:4]
 
-                    x1 = int(
-                        (cx - w/2) * w_orig
-                    )
+            # NORMALIZADO
+            if np.max(row[:4]) <= 1.01:
 
-                    y1 = int(
-                        (cy - h/2) * h_orig
-                    )
+                x1 = int((cx - w/2) * w_orig)
+                y1 = int((cy - h/2) * h_orig)
+                x2 = int((cx + w/2) * w_orig)
+                y2 = int((cy + h/2) * h_orig)
 
-                    x2 = int(
-                        (cx + w/2) * w_orig
-                    )
+            # ESCALADO
+            else:
 
-                    y2 = int(
-                        (cy + h/2) * h_orig
-                    )
-
-                else:
-
-                    x1 = int(
-                        (cx - w/2)
-                        * (w_orig / in_w)
-                    )
-
-                    y1 = int(
-                        (cy - h/2)
-                        * (h_orig / in_h)
-                    )
-
-                    x2 = int(
-                        (cx + w/2)
-                        * (w_orig / in_w)
-                    )
-
-                    y2 = int(
-                        (cy + h/2)
-                        * (h_orig / in_h)
-                    )
-
-                detecciones.append(
-                    ((x1,y1,x2,y2), conf)
+                x1 = int(
+                    (cx - w/2)
+                    * (w_orig / in_w)
                 )
+
+                y1 = int(
+                    (cy - h/2)
+                    * (h_orig / in_h)
+                )
+
+                x2 = int(
+                    (cx + w/2)
+                    * (w_orig / in_w)
+                )
+
+                y2 = int(
+                    (cy + h/2)
+                    * (h_orig / in_h)
+                )
+
+            x1 = max(0, x1)
+            y1 = max(0, y1)
+
+            x2 = min(w_orig, x2)
+            y2 = min(h_orig, y2)
+
+            detecciones.append(
+                (
+                    [x1, y1, x2, y2],
+                    float(conf)
+                )
+            )
+
+        print(
+            f"Max confidence: {max_conf:.3f}"
+        )
 
         # ====================================
         # SIN DETECCIONES
@@ -636,13 +711,7 @@ def main():
 
         x1, y1, x2, y2 = best_box
 
-        x1 = max(0, x1)
-        y1 = max(0, y1)
-
-        x2 = min(w_orig, x2)
-        y2 = min(h_orig, y2)
-
-        roi = img[y1:y2, x1:x2]
+        roi = frame[y1:y2, x1:x2]
 
         if roi.size == 0:
 
@@ -653,22 +722,8 @@ def main():
             continue
 
         # ====================================
-        # SOLO GUARDAR 1 RECORTE
+        # CLASIFICAR VEHÍCULO
         # ====================================
-
-        timestamp = datetime.now().strftime(
-            "%Y%m%d_%H%M%S"
-        )
-
-        recorte_path = os.path.join(
-            OUTPUT_DIR,
-            f"roi_{timestamp}.jpg"
-        )
-
-        cv2.imwrite(
-            recorte_path,
-            roi
-        )
 
         ancho = x2 - x1
 
@@ -684,11 +739,15 @@ def main():
 
         inicio_ocr = time.time()
 
-        placa = corregir_perspectiva(roi)
+        placa = corregir_perspectiva(
+            roi
+        )
 
         if placa is None:
 
-            print("No se pudo corregir")
+            print(
+                "No se pudo corregir perspectiva"
+            )
 
             time.sleep(CAPTURE_INTERVAL)
 
@@ -717,6 +776,10 @@ def main():
                 es_moto
             )
 
+            print(
+                f"{nombre_filtro}: {texto}"
+            )
+
             if len(texto) == 6:
 
                 placas_detectadas.append(
@@ -728,6 +791,10 @@ def main():
         tiempo_ocr = (
             fin_ocr - inicio_ocr
         ) * 1000
+
+        # ====================================
+        # PLACA MÁS REPETIDA
+        # ====================================
 
         mejor_valido = None
 
@@ -781,7 +848,7 @@ def main():
 
         print("PLACA:", mejor_valido)
 
-        print(f"Confianza YOLO: {best_conf:.2f}")
+        print(f"Confianza YOLO: {best_conf:.3f}")
 
         print(f"Captura: {tiempo_captura:.2f} ms")
 
@@ -805,6 +872,7 @@ def main():
 
         if mejor_valido:
 
+            # YA REPORTADA
             if mejor_valido in placas_reportadas:
 
                 print(
@@ -813,9 +881,12 @@ def main():
 
             else:
 
+                # ROBADA
                 if mejor_valido in placas_robadas:
 
-                    print("⚠ VEHÍCULO ROBADO")
+                    print(
+                        "⚠ VEHÍCULO ROBADO"
+                    )
 
                     respuesta, tiempo_api = verificar_api(
                         mejor_valido
@@ -848,10 +919,36 @@ def main():
         print("========================\n")
 
         # ====================================
-        # ESPERA 20 SEG
+        # GUARDAR SOLO 1 RECORTE
+        # ====================================
+
+        if mejor_valido:
+
+            nombre = (
+                f"{SAVE_FOLDER}/"
+                f"{mejor_valido}.jpg"
+            )
+
+            if not os.path.exists(nombre):
+
+                cv2.imwrite(
+                    nombre,
+                    roi
+                )
+
+                print(
+                    f"Recorte guardado: {nombre}"
+                )
+
+        # ====================================
+        # ESPERA
         # ====================================
 
         time.sleep(CAPTURE_INTERVAL)
+
+    # ====================================
+    # RELEASE
+    # ====================================
 
     cap.release()
 
