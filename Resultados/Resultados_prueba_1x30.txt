@@ -1,0 +1,408 @@
+
+================================
+ITERACIÓN 1
+================================
+API: 1420.68 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1255.51 ms
+OCR: 13964.92 ms
+TOTAL: 16962.31 ms
+CPU: 21.40%
+RAM: 231 MB
+TEMP: 47.20°C
+
+================================
+ITERACIÓN 2
+================================
+API: 952.16 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1107.46 ms
+OCR: 13679.96 ms
+TOTAL: 16053.49 ms
+CPU: 21.40%
+RAM: 238 MB
+TEMP: 47.20°C
+
+================================
+ITERACIÓN 3
+================================
+API: 968.15 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1109.45 ms
+OCR: 13895.00 ms
+TOTAL: 16282.79 ms
+CPU: 28.60%
+RAM: 243 MB
+TEMP: 44.00°C
+
+================================
+ITERACIÓN 4
+================================
+API: 972.78 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1119.47 ms
+OCR: 13849.62 ms
+TOTAL: 16249.36 ms
+CPU: 21.40%
+RAM: 241 MB
+TEMP: 43.50°C
+
+================================
+ITERACIÓN 5
+================================
+API: 1078.16 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1077.11 ms
+OCR: 13647.19 ms
+TOTAL: 16109.38 ms
+CPU: 26.70%
+RAM: 236 MB
+TEMP: 45.10°C
+
+================================
+ITERACIÓN 6
+================================
+API: 1607.93 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1111.06 ms
+OCR: 13705.01 ms
+TOTAL: 16738.77 ms
+CPU: 28.60%
+RAM: 232 MB
+TEMP: 46.20°C
+
+================================
+ITERACIÓN 7
+================================
+API: 934.46 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1134.52 ms
+OCR: 13634.43 ms
+TOTAL: 16008.25 ms
+CPU: 26.70%
+RAM: 238 MB
+TEMP: 47.20°C
+
+================================
+ITERACIÓN 8
+================================
+API: 958.06 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1105.37 ms
+OCR: 13652.24 ms
+TOTAL: 16028.05 ms
+CPU: 21.40%
+RAM: 239 MB
+TEMP: 47.80°C
+
+================================
+ITERACIÓN 9
+================================
+API: 944.70 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1133.14 ms
+OCR: 13636.70 ms
+TOTAL: 16035.33 ms
+CPU: 26.70%
+RAM: 236 MB
+TEMP: 48.30°C
+
+================================
+ITERACIÓN 10
+================================
+API: 1004.53 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1096.46 ms
+OCR: 13647.24 ms
+TOTAL: 16062.19 ms
+CPU: 26.70%
+RAM: 237 MB
+TEMP: 47.80°C
+
+================================
+ITERACIÓN 11
+================================
+API: 951.63 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1105.95 ms
+OCR: 13643.22 ms
+TOTAL: 16017.21 ms
+CPU: 26.70%
+RAM: 235 MB
+TEMP: 48.30°C
+
+================================
+ITERACIÓN 12
+================================
+API: 953.40 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1120.14 ms
+OCR: 13780.38 ms
+TOTAL: 16172.41 ms
+CPU: 21.40%
+RAM: 249 MB
+TEMP: 48.30°C
+
+================================
+ITERACIÓN 13
+================================
+API: 930.97 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1132.54 ms
+OCR: 13823.64 ms
+TOTAL: 16201.93 ms
+CPU: 35.30%
+RAM: 235 MB
+TEMP: 48.90°C
+
+================================
+ITERACIÓN 14
+================================
+API: 968.15 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1095.48 ms
+OCR: 13727.06 ms
+TOTAL: 16100.15 ms
+CPU: 21.40%
+RAM: 242 MB
+TEMP: 48.90°C
+
+================================
+ITERACIÓN 15
+================================
+API: 1241.61 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1110.48 ms
+OCR: 13960.54 ms
+TOTAL: 16625.87 ms
+CPU: 21.40%
+RAM: 235 MB
+TEMP: 48.90°C
+
+================================
+ITERACIÓN 16
+================================
+API: 945.95 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1095.47 ms
+OCR: 13733.32 ms
+TOTAL: 16083.93 ms
+CPU: 42.10%
+RAM: 235 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 17
+================================
+API: 919.33 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1138.70 ms
+OCR: 13920.58 ms
+TOTAL: 16283.11 ms
+CPU: 26.70%
+RAM: 232 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 18
+================================
+API: 956.52 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1118.26 ms
+OCR: 13651.15 ms
+TOTAL: 16035.38 ms
+CPU: 28.60%
+RAM: 236 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 19
+================================
+API: 946.83 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1115.88 ms
+OCR: 13727.64 ms
+TOTAL: 16102.47 ms
+CPU: 21.40%
+RAM: 239 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 20
+================================
+API: 954.58 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1122.93 ms
+OCR: 13652.75 ms
+TOTAL: 16044.29 ms
+CPU: 26.70%
+RAM: 248 MB
+TEMP: 49.90°C
+
+================================
+ITERACIÓN 21
+================================
+API: 937.97 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1131.57 ms
+OCR: 13787.43 ms
+TOTAL: 16165.24 ms
+CPU: 28.60%
+RAM: 239 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 22
+================================
+API: 940.85 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1110.26 ms
+OCR: 13860.21 ms
+TOTAL: 16219.19 ms
+CPU: 28.60%
+RAM: 237 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 23
+================================
+API: 1196.27 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1087.90 ms
+OCR: 13650.93 ms
+TOTAL: 16254.34 ms
+CPU: 21.40%
+RAM: 244 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 24
+================================
+API: 967.70 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1089.23 ms
+OCR: 13675.95 ms
+TOTAL: 16057.52 ms
+CPU: 23.10%
+RAM: 242 MB
+TEMP: 49.90°C
+
+================================
+ITERACIÓN 25
+================================
+API: 972.04 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1123.10 ms
+OCR: 13764.45 ms
+TOTAL: 16174.35 ms
+CPU: 28.60%
+RAM: 246 MB
+TEMP: 49.90°C
+
+================================
+ITERACIÓN 26
+================================
+API: 942.28 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1118.81 ms
+OCR: 13668.34 ms
+TOTAL: 16041.45 ms
+CPU: 26.70%
+RAM: 242 MB
+TEMP: 49.90°C
+
+================================
+ITERACIÓN 27
+================================
+API: 950.79 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1102.32 ms
+OCR: 13648.66 ms
+TOTAL: 16013.49 ms
+CPU: 28.60%
+RAM: 239 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 28
+================================
+API: 948.31 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1130.83 ms
+OCR: 13654.51 ms
+TOTAL: 16043.20 ms
+CPU: 26.70%
+RAM: 233 MB
+TEMP: 49.90°C
+
+================================
+ITERACIÓN 29
+================================
+API: 1035.36 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1105.37 ms
+OCR: 13641.25 ms
+TOTAL: 16092.31 ms
+CPU: 21.40%
+RAM: 233 MB
+TEMP: 49.40°C
+
+================================
+ITERACIÓN 30
+================================
+API: 946.47 ms
+Status: 200
+Placa: GSZ821
+YOLO: 1135.91 ms
+OCR: 13718.83 ms
+TOTAL: 16109.58 ms
+CPU: 26.70%
+RAM: 249 MB
+TEMP: 49.90°C
+
+================================
+RESULTADOS FINALES
+================================
+
+Total pruebas: 30
+YOLO promedio: 1118.02 ms
+OCR promedio: 13733.44 ms
+API promedio: 1014.96 ms
+TOTAL promedio: 16178.91 ms
+CPU promedio: 26.06%
+RAM promedio: 238.70 MB
+TEMP promedio: 48.39°C
+Throughput: 0.06 img/s
+API exitosas: 30
+API fallidas: 0
+
+================================

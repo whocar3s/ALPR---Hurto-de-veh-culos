@@ -1,0 +1,300 @@
+========================
+PLACA: LUS170
+YOLO: 1197.55 ms
+OCR: 14007.81 ms
+TOTAL: 20395.19 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 32.40%
+TEMP: 43.47°C
+VEHÍCULO ROBADO
+API: 1532.35 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa LUS170 reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 6, 'placa': 'LUS170', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:31:10.569528'}}
+========================
+
+[hevc @ 0x19bb4f0] The cu_qp_delta 48 is outside the valid range [-26, 25].
+[hevc @ 0x186e300] The cu_qp_delta 48 is outside the valid range [-26, 25].
+^Z
+[2]+  Stopped                 python main_vid.py
+(alpr_env) pi@RaspberryJS:~ $ python main_vid.py
+
+========================
+PLACA: UUR705
+YOLO: 1248.11 ms
+OCR: 12956.57 ms
+TOTAL: 19206.83 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 40.80%
+TEMP: 47.77°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: ODY51G
+YOLO: 1080.71 ms
+OCR: 13095.86 ms
+TOTAL: 19271.43 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 42.60%
+TEMP: 47.24°C
+VEHÍCULO ROBADO
+API: 1006.24 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa ODY51G reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 7, 'placa': 'ODY51G', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:33:18.418912'}}
+========================
+
+
+========================
+PLACA: RDR936
+YOLO: 1065.77 ms
+OCR: 14033.89 ms
+TOTAL: 20145.64 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.50%
+TEMP: 47.77°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: NCM842
+YOLO: 1074.00 ms
+OCR: 13475.02 ms
+TOTAL: 19595.56 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.50%
+TEMP: 46.16°C
+VEHÍCULO ROBADO
+API: 2595.54 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa NCM842 reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 8, 'placa': 'NCM842', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:35:02.682891'}}
+========================
+
+
+========================
+PLACA: LUS170
+YOLO: 1066.36 ms
+OCR: 13932.25 ms
+TOTAL: 20090.48 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.80%
+TEMP: 47.24°C
+VEHÍCULO ROBADO
+API: 1082.10 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa LUS170 reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 9, 'placa': 'LUS170', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:35:54.951549'}}
+========================
+
+[hevc @ 0x1b37000] CABAC_MAX_BIN : 7
+[hevc @ 0x1b37000] The cu_qp_delta -1094995529 is outside the valid range [-26, 25].
+[hevc @ 0x1acddb0] CABAC_MAX_BIN : 7
+[hevc @ 0x1acddb0] The cu_qp_delta -1094995529 is outside the valid range [-26, 25].
+No se detectaron placas
+
+========================
+PLACA: LCK03F
+YOLO: 1073.49 ms
+OCR: 13653.44 ms
+TOTAL: 19789.49 ms
+FPS: 0.05
+CPU: 0.50%
+RAM: 41.40%
+TEMP: 47.77°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: JDN409
+YOLO: 1106.06 ms
+OCR: 13844.64 ms
+TOTAL: 27133.33 ms
+FPS: 0.04
+CPU: 0.00%
+RAM: 42.90%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: IMT813
+YOLO: 1072.32 ms
+OCR: 13891.30 ms
+TOTAL: 20016.19 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 42.30%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: IBS39H
+YOLO: 1073.29 ms
+OCR: 12696.00 ms
+TOTAL: 18810.52 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.70%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: HST941
+YOLO: 1088.56 ms
+OCR: 13543.34 ms
+TOTAL: 19613.82 ms
+FPS: 0.05
+CPU: 0.50%
+RAM: 40.70%
+TEMP: 48.31°C
+VEHÍCULO ROBADO
+Error API: HTTPSConnectionPool(host='apizpp.onrender.com', port=443): Max retries exceeded with url: /placas/verificar (Caused by NameResolutionError("HTTPSConnection(host='apizpp.onrender.com', port=443): Failed to resolve 'apizpp.onrender.com' ([Errno -3] Temporary failure in name resolution)"))
+API: -1.00 ms
+None
+========================
+
+
+========================
+PLACA: GMR912
+YOLO: 1097.09 ms
+OCR: 13238.61 ms
+TOTAL: 19305.51 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.00%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: EFW512
+YOLO: 1067.57 ms
+OCR: 13724.72 ms
+TOTAL: 19873.58 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.40%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: EBS862
+YOLO: 1106.10 ms
+OCR: 13396.89 ms
+TOTAL: 19458.32 ms
+FPS: 0.05
+CPU: 0.80%
+RAM: 41.30%
+TEMP: 48.31°C
+VEHÍCULO ROBADO
+API: 1353.08 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa EBS862 reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 10, 'placa': 'EBS862', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:43:37.732576'}}
+========================
+
+
+========================
+PLACA: DKU983
+YOLO: 1057.55 ms
+OCR: 13902.47 ms
+TOTAL: 20067.49 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.60%
+TEMP: 48.31°C
+VEHÍCULO ROBADO
+API: 1088.47 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa DKU983 reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 11, 'placa': 'DKU983', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:44:29.905583'}}
+========================
+
+
+========================
+PLACA: DIF277
+YOLO: 1080.93 ms
+OCR: 13970.41 ms
+TOTAL: 20055.01 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 43.40%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+No se detectaron placas
+No se detectaron placas
+
+========================
+PLACA: DIF277
+YOLO: 1078.01 ms
+OCR: 13377.25 ms
+TOTAL: 19528.91 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 42.60%
+TEMP: 48.31°C
+Vehículo no reportado
+========================
+
+
+========================
+PLACA: DIF77H
+YOLO: 1086.46 ms
+OCR: 13476.94 ms
+TOTAL: 19560.03 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.60%
+TEMP: 48.85°C
+VEHÍCULO ROBADO
+API: 1124.18 ms
+{'alerta': True, 'mensaje': 'ALERTA: La placa DIF77H reportada como robada ha sido detectada.', 'evento_generado': {'id_evento': 12, 'placa': 'DIF77H', 'ubicacion': 'Raspberry Pi - Camara 1', 'tipo_evento': 'deteccion_automatica', 'fecha_hora': '2026-05-15T07:48:15.145785'}}
+========================
+
+
+========================
+PLACA: None
+YOLO: 1079.59 ms
+OCR: 12531.15 ms
+TOTAL: 18636.26 ms
+FPS: 0.05
+CPU: 2.00%
+RAM: 42.00%
+TEMP: 48.31°C
+No se obtuvo placa válida
+========================
+
+
+========================
+PLACA: HST941
+YOLO: 1094.90 ms
+OCR: 12772.47 ms
+TOTAL: 18858.01 ms
+FPS: 0.05
+CPU: 0.80%
+RAM: 41.90%
+TEMP: 48.31°C
+Placa ya reportada
+========================
+
+
+========================
+PLACA: IBS99H
+YOLO: 1067.39 ms
+OCR: 13334.47 ms
+TOTAL: 19423.81 ms
+FPS: 0.05
+CPU: 0.00%
+RAM: 41.60%
+TEMP: 48.31°C
+Vehículo no reportado
+========================

@@ -1,0 +1,394 @@
+
+================================
+TOTAL IMAGENES: 30
+================================
+
+
+================================
+IMAGEN: ADG22H.jpg
+================================
+Placa: ADG224
+API: 983.56 ms
+Status: 200
+YOLO: 1265.73 ms
+OCR: 13684.79 ms
+TOTAL: 16273.87 ms
+CPU: 26.70%
+RAM: 243 MB
+TEMP: 49.40°C
+
+================================
+IMAGEN: AFX91C.jpg
+================================
+Placa: AFX91C
+API: 1132.56 ms
+Status: 200
+YOLO: 1118.27 ms
+OCR: 13391.11 ms
+TOTAL: 15873.50 ms
+CPU: 26.70%
+RAM: 240 MB
+TEMP: 49.40°C
+
+================================
+IMAGEN: AZA70F.jpg
+================================
+No detecciones
+
+================================
+IMAGEN: CIW062.jpg
+================================
+Placa: CIW062
+API: 5974.55 ms
+Status: 200
+YOLO: 1122.22 ms
+OCR: 14131.59 ms
+TOTAL: 21551.38 ms
+CPU: 23.10%
+RAM: 237 MB
+TEMP: 48.90°C
+
+================================
+IMAGEN: DBI463.jpg
+================================
+Placa: DBI463
+API: 926.05 ms
+Status: 200
+YOLO: 1120.49 ms
+OCR: 13992.17 ms
+TOTAL: 16401.72 ms
+CPU: 26.70%
+RAM: 238 MB
+TEMP: 49.40°C
+
+================================
+IMAGEN: DGF31H.jpg
+================================
+Placa: DGF31H
+API: 1215.26 ms
+Status: 200
+YOLO: 1125.84 ms
+OCR: 13614.95 ms
+TOTAL: 16245.14 ms
+CPU: 26.70%
+RAM: 250 MB
+TEMP: 49.90°C
+
+================================
+IMAGEN: DQS096.jpg
+================================
+Placa: DOS096
+API: 939.04 ms
+Status: 200
+YOLO: 1129.14 ms
+OCR: 13875.36 ms
+TOTAL: 16253.70 ms
+CPU: 21.40%
+RAM: 244 MB
+TEMP: 49.40°C
+
+================================
+IMAGEN: EFE56F.jpg
+================================
+Placa inválida
+YOLO: 1129.45 ms
+OCR: 13937.74 ms
+TOTAL: 15321.39 ms
+CPU: 26.70%
+RAM: 237 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: EXU952.jpg
+================================
+Placa: EXU952
+API: 950.15 ms
+Status: 200
+YOLO: 1119.64 ms
+OCR: 13948.55 ms
+TOTAL: 16252.77 ms
+CPU: 23.10%
+RAM: 245 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: FPM832.jpg
+================================
+Placa: FPM832
+API: 932.26 ms
+Status: 200
+YOLO: 1104.50 ms
+OCR: 14030.51 ms
+TOTAL: 16338.82 ms
+CPU: 26.70%
+RAM: 231 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: FQX673.jpg
+================================
+Placa: FOX675
+API: 935.31 ms
+Status: 200
+YOLO: 1119.53 ms
+OCR: 14079.64 ms
+TOTAL: 16469.22 ms
+CPU: 26.70%
+RAM: 233 MB
+TEMP: 49.90°C
+
+================================
+IMAGEN: FSV222.jpg
+================================
+Placa: FSV222
+API: 1237.60 ms
+Status: 200
+YOLO: 1116.01 ms
+OCR: 13524.99 ms
+TOTAL: 16214.52 ms
+CPU: 26.70%
+RAM: 238 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: FZM790.jpg
+================================
+Placa: FZM790
+API: 921.01 ms
+Status: 200
+YOLO: 1138.75 ms
+OCR: 13937.67 ms
+TOTAL: 16320.14 ms
+CPU: 26.70%
+RAM: 231 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: FZR555.jpg
+================================
+Placa: FZR555
+API: 956.82 ms
+Status: 200
+YOLO: 1124.21 ms
+OCR: 13909.04 ms
+TOTAL: 16277.41 ms
+CPU: 21.40%
+RAM: 239 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: GLP078.jpg
+================================
+Placa: GLP078
+API: 939.41 ms
+Status: 200
+YOLO: 1098.70 ms
+OCR: 13654.62 ms
+TOTAL: 15975.43 ms
+CPU: 26.70%
+RAM: 235 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: HSV838.jpg
+================================
+Placa: HSV838
+API: 1217.01 ms
+Status: 200
+YOLO: 1123.44 ms
+OCR: 13530.02 ms
+TOTAL: 16216.96 ms
+CPU: 26.70%
+RAM: 234 MB
+TEMP: 49.90°C
+
+================================
+IMAGEN: HTN105.jpg
+================================
+Placa inválida
+YOLO: 1130.52 ms
+OCR: 12910.17 ms
+TOTAL: 14340.45 ms
+CPU: 21.40%
+RAM: 235 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: JDO515.jpg
+================================
+Placa: JDO515
+API: 965.88 ms
+Status: 200
+YOLO: 1110.82 ms
+OCR: 13521.20 ms
+TOTAL: 15925.48 ms
+CPU: 26.70%
+RAM: 240 MB
+TEMP: 51.00°C
+
+================================
+IMAGEN: JUY094.jpg
+================================
+Placa inválida
+YOLO: 1109.43 ms
+OCR: 12988.59 ms
+TOTAL: 14392.73 ms
+CPU: 21.40%
+RAM: 245 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: KHB287.jpg
+================================
+Placa: KHB287
+API: 944.80 ms
+Status: 200
+YOLO: 1088.60 ms
+OCR: 13667.60 ms
+TOTAL: 15974.36 ms
+CPU: 26.70%
+RAM: 251 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: LBU29F.jpg
+================================
+Placa: LBU29F
+API: 1068.79 ms
+Status: 200
+YOLO: 1101.54 ms
+OCR: 13579.34 ms
+TOTAL: 15983.92 ms
+CPU: 26.70%
+RAM: 258 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: LTM854.jpg
+================================
+No detecciones
+
+================================
+IMAGEN: MCZ790.jpg
+================================
+Placa: MCZ790
+API: 1137.42 ms
+Status: 200
+YOLO: 1126.02 ms
+OCR: 13498.90 ms
+TOTAL: 16147.04 ms
+CPU: 26.70%
+RAM: 239 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: MKR084.jpg
+================================
+Placa: MKR084
+API: 927.43 ms
+Status: 200
+YOLO: 1117.44 ms
+OCR: 14345.87 ms
+TOTAL: 16645.93 ms
+CPU: 21.40%
+RAM: 234 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: NAO52H.jpg
+================================
+Placa: NAG52H
+API: 939.83 ms
+Status: 200
+YOLO: 1143.01 ms
+OCR: 14100.89 ms
+TOTAL: 16445.53 ms
+CPU: 21.40%
+RAM: 249 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: NCU311.jpg
+================================
+Placa: NCU311
+API: 1347.76 ms
+Status: 200
+YOLO: 1136.75 ms
+OCR: 13606.12 ms
+TOTAL: 16427.63 ms
+CPU: 21.40%
+RAM: 226 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: NHP833.jpg
+================================
+Placa: NHP833
+API: 993.99 ms
+Status: 200
+YOLO: 1112.29 ms
+OCR: 14182.20 ms
+TOTAL: 16589.67 ms
+CPU: 26.70%
+RAM: 233 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: NUW516.jpg
+================================
+Placa: NUW516
+API: 926.80 ms
+Status: 200
+YOLO: 1111.56 ms
+OCR: 13936.95 ms
+TOTAL: 16263.30 ms
+CPU: 26.70%
+RAM: 241 MB
+TEMP: 50.50°C
+
+================================
+IMAGEN: PXE49A.jpg
+================================
+Placa: PXE494
+API: 952.44 ms
+Status: 200
+YOLO: 1136.86 ms
+OCR: 13787.16 ms
+TOTAL: 16215.97 ms
+CPU: 26.70%
+RAM: 240 MB
+TEMP: 51.50°C
+
+================================
+IMAGEN: WNY400.jpg
+================================
+Placa: WNY400
+API: 1101.79 ms
+Status: 200
+YOLO: 1090.88 ms
+OCR: 13585.23 ms
+TOTAL: 16062.03 ms
+CPU: 26.70%
+RAM: 232 MB
+TEMP: 50.50°C
+
+================================
+RESULTADOS FINALES
+================================
+
+Total imagenes: 30
+Detecciones correctas: 25
+Detecciones fallidas: 5
+Accuracy: 83.33%
+YOLO promedio: 1124.18 ms
+OCR promedio: 13748.32 ms
+API promedio: 1222.70 ms
+TOTAL promedio: 16264.29 ms
+CPU promedio: 25.12%
+RAM promedio: 239.21 MB
+TEMP promedio: 50.27°C
+Throughput: 0.06 img/s
+API exitosas: 25
+API fallidas: 0
+
+================================
